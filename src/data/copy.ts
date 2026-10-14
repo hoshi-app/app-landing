@@ -14,14 +14,13 @@ export const site = {
 export const nav = [
   { href: '#inside', label: 'Что внутри' },
   { href: '#player', label: 'Плеер' },
-  { href: '#start', label: 'Как начать' },
   { href: '#faq', label: 'Вопросы' },
 ];
 
-/** Каналы: телеграм-канал и донаты. Показываются в шапке и в футере. */
+/** Каналы: телеграм-канал и донаты. Ссылки в футере и в мобильном меню. */
 export const socials = [
-  { href: 'https://t.me/hoshiapp', label: 'Telegram', hint: 'Новости и релизы', icon: 'telegram' as IconName },
-  { href: 'https://dalink.to/hoshiapp', label: 'Поддержать', hint: 'DonationAlerts', icon: 'heart' as IconName },
+  { href: 'https://t.me/hoshiapp', label: 'Telegram', icon: 'telegram' as IconName },
+  { href: 'https://dalink.to/hoshiapp', label: 'Поддержать', icon: 'heart' as IconName },
 ];
 
 export const hero = {
@@ -47,8 +46,8 @@ export type Chapter = {
 };
 
 /**
- * «Что внутри»: три главы, у каждой — свой экран, который липнет к экрану
- * и меняется, пока листаешь карточки.
+ * «Что внутри»: три главы, у каждой — свой экран приложения рядом.
+ * Стороны чередуются, экран едет вместе с текстом (см. Features.tsx).
  */
 export const chapters: Chapter[] = [
   {
@@ -148,24 +147,12 @@ export const player = {
   kicker: 'Плеер',
   title: 'Плеер, которым удобно пользоваться',
   lead: 'Заставку можно пропустить одним касанием, качество подстроить под сеть, а озвучку поменять прямо во время серии.',
-  screens: [
-    {
-      id: 'skip',
-      screen: 'screens/player_skip.webp',
-      alt: 'Плеер: кнопка «Пропустить» поверх заставки',
-    },
-    {
-      id: 'controls',
-      screen: 'screens/player.webp',
-      alt: 'Плеер: управление, полоса перемотки и выбор озвучки',
-    },
-  ],
-  features: [
-    {
-      icon: 'skip' as IconName,
-      title: 'Пропуск опенингов и титров',
-      text: 'Как только начинается заставка, появляется кнопка «Пропустить» — сразу с нужной секунды. Жать не обязательно.',
-    },
+  /** экран без подсказки пропуска */
+  screenIdle: { id: 'controls', screen: 'screens/player.webp', alt: 'Плеер: управление, полоса перемотки и выбор озвучки' },
+  /** экран с подсказкой «Пропустить» */
+  screenSkip: { id: 'skip', screen: 'screens/player_skip.webp', alt: 'Плеер: кнопка «Пропустить» поверх заставки' },
+  /** первый набор карточек: показывается, пока телефон стоит справа */
+  featuresA: [
     {
       icon: 'mic' as IconName,
       title: 'Два крупнейших провайдера озвучек',
@@ -181,6 +168,14 @@ export const player = {
       title: 'Озвучка на ходу',
       text: 'Меняешь студию прямо во время серии — с той же секунды, без перезапуска и поисков.',
     },
+  ],
+  /** второй набор: появляется, когда телефон уехал влево и видно кнопку пропуска */
+  featuresB: [
+    {
+      icon: 'skip' as IconName,
+      title: 'Пропуск опенингов и титров',
+      text: 'Как только начинается заставка, появляется кнопка «Пропустить» — сразу с нужной секунды. Жать не обязательно.',
+    },
     {
       icon: 'zap' as IconName,
       title: 'Перемотка в один тап',
@@ -190,30 +185,6 @@ export const player = {
       icon: 'pip' as IconName,
       title: 'Окно в окне',
       text: 'Свернул приложение — звук продолжает играть, а управление остаётся на экране блокировки.',
-    },
-  ],
-};
-
-export const start = {
-  kicker: 'Как начать',
-  title: 'Три шага до первой серии',
-  screen: 'screens/auth.webp',
-  screenAlt: 'Экран входа: звезда hoshi и кнопка «Войти через Shikimori»',
-  steps: [
-    {
-      icon: 'user' as IconName,
-      title: 'Войди через Shikimori',
-      text: 'Регистрация не нужна — аккаунт у тебя уже есть.',
-    },
-    {
-      icon: 'search' as IconName,
-      title: 'Найди аниме',
-      text: 'Через поиск, фильтры или свой список. Тайтл сразу можно отправить в «Смотрю».',
-    },
-    {
-      icon: 'play' as IconName,
-      title: 'Смотри',
-      text: 'Выбери озвучку и качество. Прогресс сохранится сам.',
     },
   ],
 };

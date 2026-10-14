@@ -158,11 +158,34 @@ async function main() {
     for (const [label, sel] of STOPS) {
       const el = page.locator(sel);
       if ((await el.count()) === 0) continue;
-      await el.scrollIntoViewIfNeeded();
-      await page.waitForTimeout(1400);
+      // Высокие секции scrollIntoViewIfNeeded центрирует, и кадр попадает в середину
+      // анимации. Поэтому всегда ставим верх секции к верху окна.
+      await page.evaluate((s) => {
+        const node = document.querySelector(s);
+        if (!node) return;
+        const top = node.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo(0, Math.max(0, top - 76));
+      }, sel);
+      await page.waitForTimeout(1500);
       const file = path.join(OUT, `${vp.name}-${label}.webp`);
       await page.screenshot({ path: file, type: 'webp', quality: 88 });
       report.shots.push(`${vp.name}-${label}`);
+
+      // у секции плеера два такта: второй ловим отдельно, докрутив внутрь
+      if (label === 'player') {
+        await page.evaluate((s) => {
+          const node = document.querySelector(s);
+          if (!node) return;
+          const top = node.getBoundingClientRect().top + window.scrollY;
+          // внутри секции: её «липкий» участок = высота секции минус высота окна
+          const range = Math.max(0, node.offsetHeight - window.innerHeight);
+          window.scrollTo(0, top + range * 0.92);
+        }, sel);
+        await page.waitForTimeout(1700);
+        const second = path.join(OUT, `${vp.name}-player-skip.webp`);
+        await page.screenshot({ path: second, type: 'webp', quality: 88 });
+        report.shots.push(`${vp.name}-player-skip`);
+      }
     }
 
     if (vp.name === '1440') {

@@ -2,7 +2,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { CSSProperties } from 'react';
 import { asset } from '../lib/asset';
 import { easeOutExpo } from '../lib/motion';
-import { Icon } from './ui/Icon';
 
 export type Screen = { id: string; screen: string; alt: string };
 
@@ -10,149 +9,153 @@ type Props = {
   screens: Screen[];
   index: number;
   onSelect?: (index: number) => void;
+  /** landscape — тот же портретный корпус, повёрнутый на 90° */
   orientation?: 'portrait' | 'landscape';
   className?: string;
   style?: CSSProperties;
-  /** подпись под точками; null — не показывать */
-  caption?: string | null;
   dots?: boolean;
 };
-
-/** Ширина экрана устройства в логических точках: iPhone 15 Pro в портрете и ландшафте. */
-const DEVICE_PT = { portrait: 393, landscape: 852 };
 
 /**
  * Макет телефона: титановый безель, кнопки по бокам и настоящий скриншот внутри.
  *
- * Статус-бар и Dynamic Island в вёрстке не рисуются — они уже вшиты в кадры
- * (`tools/prepare-screens.py`), поэтому здесь остаётся только корпус и стекло.
+ * В ландшафте корпус НЕ рисуется заново — это буквально тот же портретный макет,
+ * повёрнутый на 90° через CSS `rotate`. Поэтому совпадает всё: толщина рамки,
+ * радиус угла, кнопки (они уезжают на верхнюю и нижнюю грань) и тень. Внутри
+ * скриншот повёрнут обратно, чтобы читаться нормально.
  *
- * Радиусы и толщина рамки считаются от физического масштаба устройства: ширина
- * кадра делится на ширину экрана в точках, и всё остальное берётся в тех же
- * точках. Поэтому ландшафтный макет — это буквально тот же телефон, повёрнутый
- * на 90°: угол остаётся 55 pt, а не растягивается вместе с шириной кадра.
+ * Статус-бар и Dynamic Island в вёрстке не рисуются — они уже вшиты в кадры
+ * (`tools/prepare-screens.py`).
  */
-export function Phone({
-  screens,
-  index,
-  onSelect,
-  orientation = 'portrait',
-  className,
-  style,
-  caption = 'Снято в самом приложении',
-  dots = true,
-}: Props) {
+export function Phone({ screens, index, onSelect, orientation = 'portrait', className, style, dots = true }: Props) {
   const reduced = useReducedMotion();
   const screen = screens[Math.max(0, Math.min(index, screens.length - 1))];
-  const landscape = orientation === 'landscape';
+  const rotated = orientation === 'landscape';
 
-  const px = `calc(var(--phone-w) / ${DEVICE_PT[orientation]})`; // один пункт устройства
+  // один пункт устройства: ширина кадра делится на ширину экрана в точках (393)
+  const px = 'calc(var(--phone-w) / 393)';
   const radiusOuter = `calc(${px} * 55)`;
   const radiusMid = `calc(${px} * 51)`;
   const radiusScreen = `calc(${px} * 47)`;
   const bezel = `max(3px, calc(${px} * 4.3))`;
 
-  return (
-    <div className={className} style={style}>
-      <div className="relative mx-auto w-[var(--phone-w,clamp(13.5rem,58vw,20rem))]">
-        <div className="relative">
-          {/* Кнопки корпуса. В портрете они на боках, в ландшафте — на верхней грани:
-              телефон тот же, просто повёрнут. */}
-          {landscape ? (
-            <>
-              <span aria-hidden="true" className="absolute -top-[3px] left-[17%] h-[3px] w-[5%] rounded-t bg-gradient-to-r from-white/25 to-white/5" />
-              <span aria-hidden="true" className="absolute -top-[3px] left-[25%] h-[3px] w-[9%] rounded-t bg-gradient-to-r from-white/25 to-white/5" />
-              <span aria-hidden="true" className="absolute -top-[3px] left-[36%] h-[3px] w-[9%] rounded-t bg-gradient-to-r from-white/25 to-white/5" />
-              <span aria-hidden="true" className="absolute -top-[3px] left-[80%] h-[3px] w-[12%] rounded-t bg-gradient-to-r from-white/25 to-white/5" />
-            </>
-          ) : (
-            <>
-              <span aria-hidden="true" className="absolute -left-[3px] top-[19%] h-[7%] w-[3px] rounded-l bg-gradient-to-b from-white/25 to-white/5" />
-              <span aria-hidden="true" className="absolute -left-[3px] top-[29%] h-[11%] w-[3px] rounded-l bg-gradient-to-b from-white/25 to-white/5" />
-              <span aria-hidden="true" className="absolute -left-[3px] top-[43%] h-[11%] w-[3px] rounded-l bg-gradient-to-b from-white/25 to-white/5" />
-              <span aria-hidden="true" className="absolute -right-[3px] top-[31%] h-[15%] w-[3px] rounded-r bg-gradient-to-b from-white/25 to-white/5" />
-            </>
-          )}
+  const shell = (
+    <div className="relative w-[var(--phone-w,clamp(13.5rem,58vw,20rem))]">
+      <span aria-hidden="true" className="absolute -left-[3px] top-[19%] h-[7%] w-[3px] rounded-l bg-gradient-to-b from-white/25 to-white/5" />
+      <span aria-hidden="true" className="absolute -left-[3px] top-[29%] h-[11%] w-[3px] rounded-l bg-gradient-to-b from-white/25 to-white/5" />
+      <span aria-hidden="true" className="absolute -left-[3px] top-[43%] h-[11%] w-[3px] rounded-l bg-gradient-to-b from-white/25 to-white/5" />
+      <span aria-hidden="true" className="absolute -right-[3px] top-[31%] h-[15%] w-[3px] rounded-r bg-gradient-to-b from-white/25 to-white/5" />
 
-          {/* титановый корпус */}
-          <div
-            className="relative shadow-[0_50px_90px_-30px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.07)]"
-            style={{
-              borderRadius: radiusOuter,
-              padding: bezel,
-              background:
-                'linear-gradient(150deg, #6f6f75 0%, #2a2a2e 18%, #131316 42%, #0c0c0e 60%, #3a3a40 82%, #17171a 100%)',
-            }}
-          >
-            <div className="relative bg-[#08080a]" style={{ borderRadius: radiusMid, padding: bezel }}>
-              <div className="relative overflow-hidden bg-bg" style={{ borderRadius: radiusScreen }}>
-                <div className="relative w-full" style={{ aspectRatio: landscape ? '1704 / 786' : '786 / 1704' }}>
-                  <AnimatePresence initial={false}>
-                    <motion.img
-                      key={screen.id}
-                      src={asset(screen.screen)}
-                      alt={screen.alt}
-                      width={landscape ? 1704 : 786}
-                      height={landscape ? 786 : 1704}
-                      loading={index === 0 ? 'eager' : 'lazy'}
-                      decoding="async"
-                      className="absolute inset-0 h-full w-full object-cover"
-                      initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 1.03 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.995 }}
-                      transition={{ duration: reduced ? 0.3 : 0.7, ease: easeOutExpo }}
-                    />
-                  </AnimatePresence>
-                </div>
-
-                {/* блик по стеклу */}
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0"
-                  style={{
-                    borderRadius: radiusScreen,
-                    background:
-                      'linear-gradient(118deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 26%, rgba(255,255,255,0) 74%, rgba(255,255,255,0.05) 100%)',
-                  }}
+      <div
+        className="relative shadow-[0_50px_90px_-30px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.07)]"
+        style={{
+          borderRadius: radiusOuter,
+          padding: bezel,
+          background:
+            'linear-gradient(150deg, #6f6f75 0%, #2a2a2e 18%, #131316 42%, #0c0c0e 60%, #3a3a40 82%, #17171a 100%)',
+        }}
+      >
+        <div className="relative bg-[#08080a]" style={{ borderRadius: radiusMid, padding: bezel }}>
+          <div className="relative overflow-hidden bg-bg" style={{ borderRadius: radiusScreen }}>
+            {/* корпус всегда портретный; в ландшафте картинка лежит боком и повёрнута обратно */}
+            <div className="relative w-full" style={{ aspectRatio: '786 / 1704' }}>
+              <AnimatePresence initial={false}>
+                <motion.img
+                  key={screen.id}
+                  src={asset(screen.screen)}
+                  alt={screen.alt}
+                  loading={index === 0 ? 'eager' : 'lazy'}
+                  decoding="async"
+                  className="absolute object-cover"
+                  style={
+                    rotated
+                      ? {
+                          left: '50%',
+                          top: '50%',
+                          // до поворота кадр должен быть ровно размером «высота × ширина»
+                          // экранного бокса. После поворота на -90° он ложится в бокс
+                          // один в один.
+                          width: 'calc(100% * 1704 / 786)',
+                          height: 'calc(100% * 786 / 1704)',
+                          maxWidth: 'none',
+                          // поворот и центрирование задаём через motion: обычный CSS
+                          // transform он всё равно перезапишет своими анимациями
+                          x: '-50%',
+                          y: '-50%',
+                          rotate: -90,
+                        }
+                      : { inset: 0, height: '100%', width: '100%' }
+                  }
+                  initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 1.03 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.995 }}
+                  transition={{ duration: reduced ? 0.3 : 0.7, ease: easeOutExpo }}
                 />
-              </div>
+              </AnimatePresence>
             </div>
+
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                borderRadius: radiusScreen,
+                background:
+                  'linear-gradient(118deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 26%, rgba(255,255,255,0) 74%, rgba(255,255,255,0.05) 100%)',
+              }}
+            />
           </div>
         </div>
-
-        {dots && (
-          <div className="mt-6 flex items-center justify-center gap-2" role="tablist" aria-label="Экраны приложения">
-            {screens.map((s, i) => (
-              <button
-                key={s.id}
-                type="button"
-                role="tab"
-                aria-selected={i === index}
-                aria-label={s.alt}
-                onClick={() => onSelect?.(i)}
-                className="group grid h-6 w-6 place-items-center rounded-full"
-              >
-                <motion.span
-                  className="block rounded-full"
-                  animate={{
-                    width: i === index ? 22 : 6,
-                    height: 6,
-                    backgroundColor: i === index ? '#60a5fa' : 'rgba(255,255,255,0.22)',
-                  }}
-                  transition={{ duration: 0.45, ease: reduced ? undefined : easeOutExpo }}
-                />
-              </button>
-            ))}
-          </div>
-        )}
-
-        {caption && (
-          <p className="mt-3 flex items-center justify-center gap-2 text-center text-xs text-dim">
-            <Icon name="cast" size={13} />
-            <span>{caption}</span>
-          </p>
-        )}
       </div>
+    </div>
+  );
+
+  return (
+    <div className={className} style={style}>
+      {rotated ? (
+        // бокс повёрнутого корпуса: ширина = высота портретного макета, и наоборот
+        <div
+          className="relative mx-auto"
+          style={{
+            width: 'calc(var(--phone-w,clamp(13.5rem,58vw,20rem)) * 1704 / 786)',
+            height: 'var(--phone-w,clamp(13.5rem,58vw,20rem))',
+          }}
+        >
+          <div
+            className="absolute left-1/2 top-1/2"
+            style={{ transform: 'translate(-50%, -50%) rotate(90deg)', filter: 'drop-shadow(0 30px 55px rgba(0,0,0,0.9))' }}
+          >
+            {shell}
+          </div>
+        </div>
+      ) : (
+        <div className="relative mx-auto w-[var(--phone-w,clamp(13.5rem,58vw,20rem))]">{shell}</div>
+      )}
+
+      {dots && (
+        <div className="mt-6 flex items-center justify-center gap-2" role="tablist" aria-label="Экраны приложения">
+          {screens.map((s, i) => (
+            <button
+              key={s.id}
+              type="button"
+              role="tab"
+              aria-selected={i === index}
+              aria-label={s.alt}
+              onClick={() => onSelect?.(i)}
+              className="group grid h-6 w-6 place-items-center rounded-full"
+            >
+              <motion.span
+                className="block rounded-full"
+                animate={{
+                  width: i === index ? 22 : 6,
+                  height: 6,
+                  backgroundColor: i === index ? '#60a5fa' : 'rgba(255,255,255,0.22)',
+                }}
+                transition={{ duration: 0.45, ease: reduced ? undefined : easeOutExpo }}
+              />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -26,22 +26,22 @@ export function Footer() {
               ))}
             </nav>
 
-            <ul className="flex flex-wrap gap-3">
+            {/* монохром, без плашек и подписей: иконка и название */}
+            <ul className="flex flex-wrap gap-x-6 gap-y-2">
               {socials.map((s) => (
                 <li key={s.href}>
                   <a
                     href={s.href}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="glass group inline-flex items-center gap-2.5 rounded-full px-4 py-2.5 text-sm transition-all duration-500 hover:-translate-y-0.5 hover:border-accent/45 hover:shadow-[0_18px_40px_-18px_rgba(96,165,250,0.7)]"
+                    className="group inline-flex items-center gap-2 text-sm text-mute transition-colors duration-300 hover:text-white"
                   >
                     <Icon
                       name={s.icon}
                       size={16}
-                      className="text-accent transition-transform duration-500 group-hover:scale-110"
+                      className="transition-transform duration-500 group-hover:scale-110"
                     />
-                    <span className="font-medium text-white">{s.label}</span>
-                    <span className="text-xs text-dim">{s.hint}</span>
+                    <span>{s.label}</span>
                   </a>
                 </li>
               ))}

@@ -28,11 +28,6 @@ function Badge({ store, href }: BadgeProps) {
         </span>
         <span className="mt-1 text-[0.95rem] font-semibold text-white">{copy.bottom}</span>
       </span>
-      {!href && (
-        <span className="relative ml-1 rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.14em] text-mute transition-colors duration-500 group-hover:border-accent/40 group-hover:text-soft">
-          скоро
-        </span>
-      )}
     </>
   );
 

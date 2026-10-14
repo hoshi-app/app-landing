@@ -44,16 +44,6 @@ export function Header() {
 
             <div className="flex items-center gap-2">
               <a
-                href={socials[0].href}
-                target="_blank"
-                rel="noreferrer noopener"
-                aria-label={`${socials[0].label} — ${socials[0].hint}`}
-                title={`${socials[0].label} — ${socials[0].hint}`}
-                className="glass grid h-10 w-10 place-items-center rounded-full text-accent transition-all duration-500 hover:-translate-y-0.5 hover:border-accent/45"
-              >
-                <Icon name={socials[0].icon} size={16} />
-              </a>
-              <a
                 href="#download"
                 className="hidden rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition-transform duration-300 hover:-translate-y-0.5 sm:inline-flex"
               >
@@ -135,10 +125,10 @@ export function Header() {
                     href={s.href}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="glass inline-flex items-center gap-2.5 rounded-full px-4 py-2.5 text-sm"
+                    className="inline-flex items-center gap-2 text-sm text-mute transition-colors duration-300 hover:text-white"
                   >
-                    <Icon name={s.icon} size={16} className="text-accent" />
-                    <span className="font-medium text-white">{s.label}</span>
+                    <Icon name={s.icon} size={16} />
+                    <span>{s.label}</span>
                   </a>
                 ))}
               </motion.div>

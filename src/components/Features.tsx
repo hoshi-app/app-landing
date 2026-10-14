@@ -61,7 +61,6 @@ export function Features() {
                     screens={[{ id: chapter.id, screen: chapter.screen, alt: chapter.screenAlt }]}
                     index={0}
                     dots={false}
-                    caption={null}
                     style={{ ['--phone-w' as string]: 'clamp(9.5rem,48vw,19rem)' }}
                   />
                 </Reveal>
