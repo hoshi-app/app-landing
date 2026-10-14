@@ -32,12 +32,13 @@ export function Phone({ screens, index, onSelect, orientation = 'portrait', clas
   const screen = screens[Math.max(0, Math.min(index, screens.length - 1))];
   const rotated = orientation === 'landscape';
 
-  // один пункт устройства: ширина кадра делится на ширину экрана в точках (393)
-  const px = 'calc(var(--phone-w) / 393)';
+  const px = `calc(var(--phone-w) / 393)`;
   const radiusOuter = `calc(${px} * 55)`;
   const radiusMid = `calc(${px} * 51)`;
   const radiusScreen = `calc(${px} * 47)`;
   const bezel = `max(3px, calc(${px} * 4.3))`;
+  /** Экран уже корпуса на четыре рамки, поэтому и повёрнутый силуэт уже, чем --phone-w × 1704/786. */
+  const rotatedWidth = `calc(var(--phone-w) * ${1704 / 786} - 4 * ${bezel} * ${1704 / 786 - 1})`;
 
   const shell = (
     <div className="relative w-[var(--phone-w,clamp(13.5rem,58vw,20rem))]">
@@ -47,7 +48,7 @@ export function Phone({ screens, index, onSelect, orientation = 'portrait', clas
       <span aria-hidden="true" className="absolute -right-[3px] top-[31%] h-[15%] w-[3px] rounded-r bg-gradient-to-b from-white/25 to-white/5" />
 
       <div
-        className="relative shadow-[0_50px_90px_-30px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.07)]"
+        className={`relative ${rotated ? '' : 'shadow-[0_50px_90px_-30px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.07)]'}`}
         style={{
           borderRadius: radiusOuter,
           padding: bezel,
@@ -112,17 +113,25 @@ export function Phone({ screens, index, onSelect, orientation = 'portrait', clas
   return (
     <div className={className} style={style}>
       {rotated ? (
-        // бокс повёрнутого корпуса: ширина = высота портретного макета, и наоборот
+        // бокс повёрнутого корпуса: ширина = высота портретного макета, и наоборот.
+        //
+        // Тень здесь именно `box-shadow`, а не `drop-shadow`: drop-shadow на большом
+        // повёрнутом элементе перерисовывается каждый кадр анимации и рассыпается
+        // на плитки. Скругление задаём то же, что у самого корпуса, поэтому тень
+        // повторяет силуэт.
         <div
           className="relative mx-auto"
           style={{
-            width: 'calc(var(--phone-w,clamp(13.5rem,58vw,20rem)) * 1704 / 786)',
+            width: rotatedWidth,
             height: 'var(--phone-w,clamp(13.5rem,58vw,20rem))',
+            borderRadius: radiusOuter,
+            boxShadow: '0 30px 46px -14px rgba(0,0,0,0.8)',
+            contain: 'paint',
           }}
         >
           <div
             className="absolute left-1/2 top-1/2"
-            style={{ transform: 'translate(-50%, -50%) rotate(90deg)', filter: 'drop-shadow(0 30px 55px rgba(0,0,0,0.9))' }}
+            style={{ transform: 'translate(-50%, -50%) rotate(90deg)' }}
           >
             {shell}
           </div>

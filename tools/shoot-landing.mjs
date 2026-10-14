@@ -177,20 +177,28 @@ async function main() {
       await page.screenshot({ path: file, type: 'webp', quality: 88 });
       report.shots.push(`${vp.name}-${label}`);
 
-      // у секции плеера два такта: второй ловим отдельно, докрутив внутрь
+      // у секции плеера два такта: считаем от липкого блока, а не от всей секции,
+      // иначе кадр попадает на интро, когда сцена ещё не залипла
       if (label === 'player') {
-        await page.evaluate((s) => {
-          const node = document.querySelector(s);
-          if (!node) return;
-          const top = node.getBoundingClientRect().top + window.scrollY;
-          // внутри секции: её «липкий» участок = высота секции минус высота окна
-          const range = Math.max(0, node.offsetHeight - window.innerHeight);
-          window.scrollTo(0, top + range * 0.92);
-        }, sel);
-        await page.waitForTimeout(1700);
-        const second = path.join(OUT, `${vp.name}-player-skip.webp`);
-        await page.screenshot({ path: second, type: 'webp', quality: 88 });
-        report.shots.push(`${vp.name}-player-skip`);
+        for (const [suffix, at] of [
+          ['beat1', 0.08],
+          ['beat2', 0.95],
+        ]) {
+          await page.evaluate(
+            ({ s, at }) => {
+              const section = document.querySelector(s);
+              const block = section?.lastElementChild;
+              if (!block) return;
+              const top = block.getBoundingClientRect().top + window.scrollY;
+              const range = Math.max(0, block.offsetHeight - window.innerHeight);
+              window.scrollTo(0, top + range * at);
+            },
+            { s: sel, at },
+          );
+          await page.waitForTimeout(1900);
+          await page.screenshot({ path: path.join(OUT, `${vp.name}-player-${suffix}.webp`), type: 'webp', quality: 88 });
+          report.shots.push(`${vp.name}-player-${suffix}`);
+        }
       }
     }
 
