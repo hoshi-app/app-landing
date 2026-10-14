@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .capture/
+.shots/
+.capture-log.json
 *.local
 .DS_Store
 .vite/
