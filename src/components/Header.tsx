@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from 'motion/react';
 import { useState } from 'react';
-import { nav } from '../data/copy';
+import { nav, socials } from '../data/copy';
 import { ease, easeOutExpo } from '../lib/motion';
 import { Icon } from './ui/Icon';
 import { Logo } from './ui/Brand';
@@ -43,6 +43,16 @@ export function Header() {
             </nav>
 
             <div className="flex items-center gap-2">
+              <a
+                href={socials[0].href}
+                target="_blank"
+                rel="noreferrer noopener"
+                aria-label={`${socials[0].label} — ${socials[0].hint}`}
+                title={`${socials[0].label} — ${socials[0].hint}`}
+                className="glass grid h-10 w-10 place-items-center rounded-full text-accent transition-all duration-500 hover:-translate-y-0.5 hover:border-accent/45"
+              >
+                <Icon name={socials[0].icon} size={16} />
+              </a>
               <a
                 href="#download"
                 className="hidden rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition-transform duration-300 hover:-translate-y-0.5 sm:inline-flex"
@@ -111,6 +121,27 @@ export function Header() {
               >
                 Скачать <Icon name="arrowRight" size={18} />
               </motion.a>
+
+              <motion.div
+                className="mt-8 flex flex-wrap gap-3"
+                variants={{
+                  hidden: { opacity: 0, y: 24 },
+                  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease } },
+                }}
+              >
+                {socials.map((s) => (
+                  <a
+                    key={s.href}
+                    href={s.href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="glass inline-flex items-center gap-2.5 rounded-full px-4 py-2.5 text-sm"
+                  >
+                    <Icon name={s.icon} size={16} className="text-accent" />
+                    <span className="font-medium text-white">{s.label}</span>
+                  </a>
+                ))}
+              </motion.div>
             </motion.nav>
             <button
               type="button"

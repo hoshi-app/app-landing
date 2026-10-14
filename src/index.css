@@ -64,10 +64,11 @@
     color: #fff;
   }
 
+  /* Обводку фокуса убрали сознательно: она загоралась рамкой вокруг кнопок и
+     мешала. Взамен интерактив всегда заметен по собственному ховеру. */
+  :focus,
   :focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 3px;
-    border-radius: 0.35rem;
+    outline: none;
   }
 
   ::-webkit-scrollbar {

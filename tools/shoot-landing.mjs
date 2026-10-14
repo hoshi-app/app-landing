@@ -46,10 +46,11 @@ const STOPS = [
   ['hero', '#top'],
   ['marquee', 'section[aria-label="Что можно смотреть"]'],
   ['inside', '#inside'],
-  ['look', '#look'],
+  ['player', '#player'],
   ['start', '#start'],
   ['faq', '#faq'],
   ['download', '#download'],
+  ['footer', 'footer'],
 ];
 
 function serve() {

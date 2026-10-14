@@ -12,13 +12,24 @@ function Badge({ store, href }: BadgeProps) {
   const copy = store === 'apple' ? hero.badges.apple : hero.badges.google;
   const inner = (
     <>
-      <Icon name={store === 'apple' ? 'apple' : 'gplay'} size={store === 'apple' ? 24 : 22} className="shrink-0" />
-      <span className="flex flex-col items-start leading-none">
-        <span className="text-[0.62rem] uppercase tracking-[0.14em] text-mute">{copy.top}</span>
+      {/* блик, который проезжает по кнопке при наведении */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -translate-x-full bg-[linear-gradient(100deg,transparent,rgba(255,255,255,0.13),transparent)] transition-transform duration-700 group-hover:translate-x-full"
+      />
+      <Icon
+        name={store === 'apple' ? 'apple' : 'gplay'}
+        size={store === 'apple' ? 24 : 22}
+        className="relative shrink-0 transition-transform duration-500 group-hover:scale-110"
+      />
+      <span className="relative flex flex-col items-start leading-none">
+        <span className="text-[0.62rem] uppercase tracking-[0.14em] text-mute transition-colors duration-500 group-hover:text-soft">
+          {copy.top}
+        </span>
         <span className="mt-1 text-[0.95rem] font-semibold text-white">{copy.bottom}</span>
       </span>
       {!href && (
-        <span className="ml-1 rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.14em] text-mute">
+        <span className="relative ml-1 rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.14em] text-mute transition-colors duration-500 group-hover:border-accent/40 group-hover:text-soft">
           скоро
         </span>
       )}
@@ -26,11 +37,11 @@ function Badge({ store, href }: BadgeProps) {
   );
 
   const base =
-    'glass group inline-flex select-none items-center gap-3 rounded-2xl px-4 py-3 text-left transition-transform duration-300';
+    'glass group relative inline-flex select-none items-center gap-3 overflow-hidden rounded-2xl px-4 py-3 text-left transition-all duration-500 hover:-translate-y-0.5 hover:border-accent/45 hover:shadow-[0_18px_40px_-18px_rgba(96,165,250,0.7)]';
 
   if (href) {
     return (
-      <a href={href} className={`${base} hover:-translate-y-0.5`} target="_blank" rel="noreferrer noopener">
+      <a href={href} className={base} target="_blank" rel="noreferrer noopener">
         {inner}
       </a>
     );

@@ -2,6 +2,7 @@ node_modules/
 dist/
 .capture/
 .shots/
+.screens-src/
 .capture-log.json
 *.local
 .DS_Store

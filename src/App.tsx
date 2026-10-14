@@ -4,7 +4,7 @@ import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { Marquee } from './components/Marquee';
 import { Features } from './components/Features';
-import { Look } from './components/Look';
+import { Player } from './components/Player';
 import { Start } from './components/Start';
 import { Faq } from './components/Faq';
 import { FinalCta } from './components/FinalCta';
@@ -25,7 +25,7 @@ export default function App() {
         <Hero />
         <Marquee />
         <Features />
-        <Look />
+        <Player />
         <Start />
         <Faq />
         <FinalCta />

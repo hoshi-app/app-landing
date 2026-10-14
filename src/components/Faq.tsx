@@ -14,12 +14,9 @@ export function Faq() {
       <div className="shell grid gap-[clamp(2rem,5vw,4rem)] lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
         <Reveal>
           <span className="kicker">{faq.kicker}</span>
-          <h2 className="mt-4 text-[clamp(1.9rem,4.6vw,3rem)] font-semibold leading-[1.08] tracking-[-0.02em]">
+          <h2 className="mt-4 text-[clamp(1.9rem,4.6vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">
             {faq.title}
           </h2>
-          <p className="mt-4 max-w-[34ch] text-[1rem] leading-relaxed text-mute">
-            Без маркетинговых обещаний: только то, что приложение умеет сейчас.
-          </p>
         </Reveal>
 
         <Reveal y={32}>
