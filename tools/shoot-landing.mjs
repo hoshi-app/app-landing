@@ -105,7 +105,13 @@ async function main() {
       if (m.type() === 'error') report.consoleErrors.push(`${vp.name}: ${m.text().slice(0, 160)}`);
     });
 
-    await page.goto(ORIGIN, { waitUntil: 'networkidle' });
+    await page.goto(ORIGIN, { waitUntil: 'domcontentloaded' });
+    // заставка живёт ~1.5 с — ловим её отдельным кадром на большом экране
+    if (vp.name === '1440') {
+      await page.waitForTimeout(700);
+      await page.screenshot({ path: path.join(OUT, '1440-splash.webp'), type: 'webp', quality: 88 });
+      report.shots.push('1440-splash');
+    }
     await page.waitForTimeout(2600); // сплэш + входные анимации
 
     const metrics = await page.evaluate(() => ({

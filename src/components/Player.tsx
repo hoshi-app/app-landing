@@ -10,7 +10,7 @@ const SKIP = [{ id: player.screenSkip.id, screen: player.screenSkip.screen, alt:
 
 function Cards({ features }: { features: typeof player.featuresA }) {
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3 sm:grid-cols-3">
       {features.map((f, i) => (
         <motion.div
           key={f.title}
@@ -29,11 +29,14 @@ function Cards({ features }: { features: typeof player.featuresA }) {
 /**
  * Плеер во весь экран, в два такта.
  *
- * Телефон здесь большой: он выше окна и шире его, поэтому вылезает за края и
- * читается как настоящий экран, а не как картинка в рамке. Сначала он стоит
- * так, что видно левую часть плеера, — это кадр без подсказки пропуска и
- * карточки про провайдеров и качество. Дальше телефон уезжает влево: в кадре
- * оказывается кнопка «Пропустить», а справа появляются карточки про неё.
+ * Текст занимает свою полосу сверху, поэтому ему не нужны затемнения поверх
+ * картинки. Под ним — телефон крупнее окна: он выше своей области и шире её,
+ * поэтому вылезает за края и читается как настоящий экран, а не картинка в рамке.
+ *
+ * Первый такт: телефон стоит так, что видно левую часть плеера, — это кадр без
+ * подсказки пропуска и карточки про провайдеров и качество. Второй: телефон
+ * уезжает влево, в кадре оказывается кнопка «Пропустить», а в полосе меняются
+ * карточки — про пропуск заставок.
  */
 export function Player() {
   const ref = useRef<HTMLElement>(null);
@@ -47,13 +50,14 @@ export function Player() {
     setSkipStage((cur) => (cur === next ? cur : next));
   });
 
-  const phoneX = useTransform(scrollYProgress, [0.28, 0.72], ['10vw', '-24vw']);
-  const scrimLeft = useTransform(scrollYProgress, [0.3, 0.55], [1, 0.25]);
-  const scrimRight = useTransform(scrollYProgress, [0.3, 0.55], [0.25, 1]);
-  const cardsA = useTransform(scrollYProgress, [0.05, 0.3, 0.44], [0, 1, 0]);
-  const cardsAY = useTransform(scrollYProgress, [0.3, 0.44], [0, -24]);
-  const cardsB = useTransform(scrollYProgress, [0.54, 0.72], [0, 1]);
-  const cardsBY = useTransform(scrollYProgress, [0.54, 0.72], [24, 0]);
+  const phoneX = useTransform(scrollYProgress, [0.28, 0.72], ['0vw', '-62vw']);
+  // телефон выше своей области, поэтому во втором такте поднимаем его:
+  // иначе кнопка «Пропустить» остаётся ниже кадра
+  const phoneY = useTransform(scrollYProgress, [0.28, 0.72], ['0vh', '-34vh']);
+  const cardsA = useTransform(scrollYProgress, [0, 0.34, 0.46], [1, 1, 0]);
+  const cardsAY = useTransform(scrollYProgress, [0.34, 0.46], [0, -20]);
+  const cardsB = useTransform(scrollYProgress, [0.54, 0.7], [0, 1]);
+  const cardsBY = useTransform(scrollYProgress, [0.54, 0.7], [20, 0]);
 
   return (
     <section id="player" ref={ref} className="relative scroll-mt-24 lg:h-[260vh]">
@@ -82,57 +86,46 @@ export function Player() {
 
       {/* --- десктоп: липкая сцена с прокруткой --- */}
       <div className="hidden lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-hidden">
-        <div className="relative h-full">
-          {/* затемнение по краям: слева в первом такте, справа во втором */}
-          <motion.div
-            aria-hidden="true"
-            className="absolute inset-y-0 left-0 w-[46%] bg-[linear-gradient(90deg,#121212_0%,rgba(18,18,18,0.94)_38%,rgba(18,18,18,0.42)_68%,transparent_100%)]"
-            style={reduced ? undefined : { opacity: scrimLeft }}
-          />
-          <motion.div
-            aria-hidden="true"
-            className="absolute inset-y-0 right-0 w-[46%] bg-[linear-gradient(270deg,#121212_0%,rgba(18,18,18,0.94)_38%,rgba(18,18,18,0.42)_68%,transparent_100%)]"
-            style={reduced ? undefined : { opacity: scrimRight }}
-          />
-          <div
-            aria-hidden="true"
-            className="absolute inset-x-0 top-0 h-[30vh] bg-[linear-gradient(180deg,#121212_0%,rgba(18,18,18,0.72)_48%,transparent_100%)]"
-          />
+        <div className="flex h-full flex-col">
+          {/* полоса с текстом и карточками */}
+          <div className="shell shrink-0 pb-8 pt-[9vh]">
+            <div className="flex items-start gap-x-[clamp(2rem,4vw,4rem)]">
+              <div className="max-w-[24rem] shrink-0">
+                <span className="kicker">{player.kicker}</span>
+                <h2 className="mt-4 text-[clamp(1.8rem,2.5vw,2.5rem)] font-semibold leading-[1.08] tracking-[-0.03em]">
+                  {player.title}
+                </h2>
+                <p className="mt-4 max-w-[36ch] text-[0.98rem] leading-relaxed text-mute">{player.lead}</p>
+              </div>
 
-          {/* телефон: выше окна и шире его — вылезает за края */}
-          <motion.div
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-            style={
-              reduced
-                ? { ['--phone-w' as string]: '104vh' }
-                : { x: phoneX, ['--phone-w' as string]: '104vh' }
-            }
-          >
-            <Phone screens={skipStage ? SKIP : IDLE} index={0} orientation="landscape" dots={false} />
-          </motion.div>
-
-          {/* текст поверх */}
-          <div className="absolute left-[4vw] top-[10vh] z-10 max-w-[30rem]">
-            <span className="kicker">{player.kicker}</span>
-            <h2 className="mt-4 text-[clamp(1.9rem,3.2vw,2.8rem)] font-semibold leading-[1.08] tracking-[-0.03em]">
-              {player.title}
-            </h2>
-            <p className="mt-4 max-w-[38ch] text-[1rem] leading-relaxed text-mute">{player.lead}</p>
+              {/* два набора карточек сменяют друг друга на одном месте */}
+              <div className="relative min-w-0 flex-1 pt-1">
+                <motion.div style={reduced ? undefined : { opacity: cardsA, y: cardsAY }}>
+                  <Cards features={player.featuresA} />
+                </motion.div>
+                <motion.div
+                  className="absolute inset-x-0 top-1"
+                  style={reduced ? { display: 'none' } : { opacity: cardsB, y: cardsBY }}
+                >
+                  <Cards features={player.featuresB} />
+                </motion.div>
+              </div>
+            </div>
           </div>
 
-          <motion.div
-            className="absolute left-[4vw] top-[38vh] z-10 w-[21rem]"
-            style={reduced ? undefined : { opacity: cardsA, y: cardsAY }}
-          >
-            <Cards features={player.featuresA} />
-          </motion.div>
-
-          <motion.div
-            className="absolute right-[4vw] top-[32vh] z-10 w-[21rem]"
-            style={reduced ? undefined : { opacity: cardsB, y: cardsBY }}
-          >
-            <Cards features={player.featuresB} />
-          </motion.div>
+          {/* область телефона: он больше её и вылезает за края */}
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            <motion.div
+              className="absolute left-[7%] top-0"
+              style={
+                reduced
+                  ? { ['--phone-w' as string]: '118vh' }
+                  : { x: phoneX, y: phoneY, ['--phone-w' as string]: '118vh' }
+              }
+            >
+              <Phone screens={skipStage ? SKIP : IDLE} index={0} orientation="landscape" dots={false} />
+            </motion.div>
+          </div>
         </div>
       </div>
     </section>

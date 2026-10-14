@@ -20,7 +20,7 @@ export function Features() {
           <div>
             <span className="kicker">Что внутри</span>
             <h2 className="mt-4 text-[clamp(1.9rem,4.6vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">
-              Найти, вести, досмотреть
+              Найти, сохранить, смотреть
             </h2>
           </div>
           <p className="max-w-[46ch] text-[1.02rem] leading-relaxed text-mute lg:pb-1.5">
