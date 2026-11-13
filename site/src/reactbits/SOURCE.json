@@ -1,0 +1,19 @@
+{
+  "pin": "4e0d091d3b1ea8b7aadef33716a8d99d164ae4ce",
+  "repo": "https://github.com/DavidHDev/react-bits",
+  "components": {
+    "TextAnimations/BlurText": {
+      "patched": "у компонента жёстко зашит <p>, а он нужен как настоящий <h1>"
+    },
+    "TextAnimations/ScrollFloat": {},
+    "TextAnimations/CurvedLoop": {},
+    "Components/GooeyNav": {},
+    "Components/Counter": {},
+    "Animations/LogoLoop": {},
+    "Animations/AnimatedContent": {},
+    "Animations/PixelSwap": {},
+    "Animations/Noise": {},
+    "Animations/GradualBlur": {},
+    "Backgrounds/LightRays": {}
+  }
+}

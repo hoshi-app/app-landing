@@ -1,30 +1,30 @@
 """
-fetch-posters.py — собирает постеры для ленты на лендинге.
+fetch-posters.py — обложки для стены постеров.
 
     python tools/fetch-posters.py
 
-Что делает:
-  1) спрашивает у API Shikimori карточки выбранных тайтлов (название, статус,
-     оценка, число серий, путь к постеру);
-  2) качает постеры, ужимает до 420 px по ширине и сохраняет WebP в public/posters/,
-     чтобы лендинг не зависел от чужого CDN и не весил десятки мегабайт;
-  3) пишет src/data/posters.ts — готовый список для ленты.
+Скрипт спрашивает у API Shikimori названия выбранных тайтлов, качает обложки,
+ужимает до 240 px по ширине и кладёт AVIF + WebP в site/posters/. Название нужно
+только для alt: на стене постеры показываются без подписей, поэтому ни оценок,
+ни статусов, ни числа серий здесь больше нет.
+
+В конце печатается готовая разметка для site/index.html — размеры вписываются
+в width/height, чтобы браузер знал геометрию до загрузки картинок.
 
 Арт принадлежит правообладателям; в репозитории лежат только уменьшенные копии
-для превью на странице приложения.
+для превью.
 """
 import json
 import os
-import re
 import sys
 import urllib.request
 from io import BytesIO
 
 from PIL import Image
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_DIR = os.path.join(ROOT, "public", "posters")
-DATA_FILE = os.path.join(ROOT, "src", "data", "posters.ts")
+import media
+
+OUT_DIR = os.path.join(media.SITE, "posters")
 
 API = "https://shikimori.io/api/animes"
 IDS = [
@@ -46,20 +46,10 @@ IDS = [
     59068,  # Подземелье вкусностей 2
 ]
 
-WIDTH = 420
-QUALITY = 82
+WIDTH = 240
+AVIF_Q = 58
+WEBP_Q = 78
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0 Safari/537.36"
-
-STATUS = {
-    "released": ("Вышло", "green"),
-    "ongoing": ("Онгоинг", "blue"),
-    "anons": ("Анонс", "orange"),
-}
-KIND = {
-    "tv": "TV Сериал", "movie": "Фильм", "ona": "ONA", "ova": "OVA",
-    "tv_special": "Спецвыпуск", "special": "Спецвыпуск", "music": "Клип", "pv": "Проморол",
-}
-MONTHS = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
 
 
 def get(url: str) -> bytes:
@@ -68,28 +58,13 @@ def get(url: str) -> bytes:
         return r.read()
 
 
-def aired_label(value: str | None) -> str:
-    """YYYY-MM-DD → «2024» / «окт 2027»: день и месяц '01' у шики означают «неизвестно»."""
-    if not value:
-        return ""
-    m = re.match(r"^(\d{4})-(\d{2})-(\d{2})$", value)
-    if not m:
-        return ""
-    year, month, day = m.group(1), int(m.group(2)), m.group(3)
-    if day == "01" and month == 1:
-        return year
-    if day == "01":
-        return f"{MONTHS[month - 1]} {year}"
-    return f"{day} {MONTHS[month - 1]} {year}"
-
-
 def main() -> int:
     os.makedirs(OUT_DIR, exist_ok=True)
     url = f"{API}?ids={','.join(str(i) for i in IDS)}&limit=50"
     animes = json.loads(get(url))
     by_id = {int(a["id"]): a for a in animes}
 
-    rows = []
+    snippets = []
     for anime_id in IDS:
         a = by_id.get(anime_id)
         if not a:
@@ -108,73 +83,24 @@ def main() -> int:
             continue
 
         img = Image.open(BytesIO(raw)).convert("RGB")
-        height = round(img.height * WIDTH / img.width)
-        img = img.resize((WIDTH, height), Image.LANCZOS)
-        name = f"{anime_id}.webp"
-        img.save(os.path.join(OUT_DIR, name), "WEBP", quality=QUALITY, method=6)
+        out = media.fit(img, WIDTH)
+        w, h = out.size
+        media.save_avif(out, f"posters/{anime_id}.avif", AVIF_Q)
+        media.save_webp(out, f"posters/{anime_id}.webp", WEBP_Q)
 
-        status = (a.get("status") or "").lower()
-        badge, tone = STATUS.get(status, ("", "z8"))
-        episodes = a.get("episodes") or 0
-        aired = int((a.get("aired_on") or "0")[:4] or 0)
-        if status == "ongoing":
-            meta = f"{a.get('episodes_aired', 0)}/{episodes or '?'} эп."
-        elif episodes:
-            meta = f"{episodes} эп."
-        else:
-            meta = KIND.get(a.get("kind", ""), a.get("kind", ""))
-
-        rows.append({
-            "id": anime_id,
-            "title": a.get("russian") or a.get("name") or "",
-            "poster": f"posters/{name}",
-            "badge": badge,
-            "tone": tone,
-            "meta": meta,
-            "score": float(a.get("score") or 0),
-            "aired": aired_label(a.get("aired_on")) or (str(aired) if aired else ""),
-        })
-        print(f"  ok {anime_id} {rows[-1]['title']}  {os.path.getsize(os.path.join(OUT_DIR, name)) // 1024} KB")
-
-    body = ",\n".join(
-        "  { id: %d, title: %s, poster: '%s', badge: %s, tone: '%s', meta: %s, score: %s, aired: %s }"
-        % (
-            r["id"],
-            json.dumps(r["title"], ensure_ascii=False),
-            r["poster"],
-            json.dumps(r["badge"], ensure_ascii=False),
-            r["tone"],
-            json.dumps(r["meta"], ensure_ascii=False),
-            r["score"],
-            json.dumps(r["aired"], ensure_ascii=False),
+        title = (a.get("russian") or a.get("name") or "").replace('"', "&quot;")
+        snippets.append(
+            f'        <img src="./posters/{anime_id}.webp" width="{w}" height="{h}" '
+            f'alt="{title}" loading="lazy" decoding="async">'
         )
-        for r in rows
-    )
-    ts = f"""// Сгенерировано tools/fetch-posters.py — правьте скрипт, а не файл.
-// Постеры — уменьшенные копии обложек Shikimori, арт принадлежит правообладателям.
+        print(
+            f"  ok {anime_id:6} {title[:40]:42} {w}x{h}  "
+            f"avif {media.kb(f'posters/{anime_id}.avif'):>2} KB"
+        )
 
-export type Poster = {{
-  id: number;
-  title: string;
-  poster: string;
-  badge: string;
-  tone: 'green' | 'blue' | 'orange' | 'z8';
-  meta: string;
-  score: number;
-  aired: string;
-}};
-
-export const posters: Poster[] = [
-{body},
-];
-"""
-    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        f.write(ts)
-
-    total = sum(os.path.getsize(os.path.join(OUT_DIR, f)) for f in os.listdir(OUT_DIR))
-    print(f"\n{len(rows)} posters, {total // 1024} KB -> public/posters/")
-    print(f"data -> {os.path.relpath(DATA_FILE, ROOT)}")
+    print("\nразметка для site/index.html:\n")
+    print("\n".join(snippets))
+    print(f"\n{len(snippets)} постеров -> site/posters/")
     return 0
 
 

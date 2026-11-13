@@ -1,0 +1,747 @@
+/* hoshi — секции страницы. Токены и типографика — в base.css. */
+
+/* ---------------------------------------------------------------- шапка */
+
+/* Шапка прозрачная: глубину даёт GradualBlur (размытие сильнее сверху,
+   слабее к низу) и тинт того же цвета, что фон приложения. */
+.head {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: transparent;
+}
+
+/* Слой размытия живёт дольше самой шапки: он заходит на контент под ней,
+   поэтому у обёртки высота больше строки навигации. Клики он не ловит. */
+.head__veil {
+  position: absolute;
+  inset: 0 0 auto;
+  height: calc(var(--head) + 7rem);
+  pointer-events: none;
+}
+
+.head__row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  height: var(--head);
+}
+
+.head__logo img {
+  width: auto;
+  height: 1.05rem;
+}
+
+/* Навигация стоит ровно по центру окна, а не по центру свободного места
+   между логотипом и краем: позиционируем абсолютно от середины шапки. */
+.head__nav {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: var(--head);
+  align-items: center;
+  transform: translateX(-50%);
+}
+
+/* статический фолбэк навигации до запуска скриптов */
+.head__plain {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.head__plain a {
+  display: inline-block;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  color: var(--mute);
+  font-size: 0.85rem;
+}
+
+.head__plain a:hover {
+  color: var(--ink);
+}
+
+@media (min-width: 900px) {
+  .head__nav {
+    display: flex;
+  }
+
+  .head__logo img {
+    height: 1.15rem;
+  }
+}
+/* ---------------------------------------------------------------- герой */
+
+/* Шапка липкая и по-прежнему занимает свою строку в потоке — значит герой
+   начинался бы под ней, и его свет обрезался по этой границе (та самая
+   чёрная полоса). Поднимаем main под шапку и возвращаем отступ герою:
+   теперь фон, лучи и зерно идут с самого верха страницы, а вуаль шапки
+   ложится на свет и работает как стекло. */
+main {
+  margin-top: calc(var(--head) * -1);
+}
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  padding-top: var(--head);
+}
+
+.hero__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.hero__glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(58% 52% at 64% 4%, rgba(129, 140, 248, 0.20), transparent 64%),
+    radial-gradient(42% 38% at 8% 26%, rgba(96, 165, 250, 0.08), transparent 72%),
+    linear-gradient(180deg, rgba(18, 18, 18, 0) 52%, var(--bg) 100%);
+}
+
+/* Источник веера уводим выше кадра: тогда свет есть и за шапкой, и под ней
+   начинается не с чёрной полосы, а с уже раскрытых лучей */
+.hero__rays {
+  position: absolute;
+  inset: -26% -12% auto;
+  height: 142%;
+  opacity: 0.95;
+}
+
+.hero__grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.85;
+}
+
+.hero__grid {
+  display: grid;
+  gap: clamp(2rem, 5vw, 3.5rem);
+  padding-block: clamp(2.5rem, 6vw, 4rem) clamp(2.5rem, 6vw, 3.5rem);
+}
+
+/* На узком экране шапка с вуалью ближе к контенту: размытие короче, а герой
+   отступает вниз — иначе надзаголовок попадает под стекло и мылится. */
+@media (max-width: 899px) {
+  .head .gradual-blur {
+    height: 5rem !important;
+  }
+
+  .hero__grid {
+    padding-block-start: clamp(4.5rem, 12vw, 5.5rem);
+  }
+}
+
+.hero__copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-width: 0;
+}
+
+/* BlurText раскладывает слова флексом: чтобы текст читался по центру,
+   центрируем сами слова, а на широком экране возвращаем влево */
+.hero__title,
+.hero__lead {
+  justify-content: center;
+}
+
+.hero__title {
+  margin-top: 1.1rem;
+  font-size: clamp(2.3rem, 5.4vw, 4.15rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+}
+
+.hero__lead {
+  max-width: min(100%, 30rem);
+  margin-top: 1.15rem;
+  color: var(--mute);
+  font-size: clamp(1rem, 1.35vw, 1.12rem);
+  line-height: 1.62;
+}
+
+.hero__cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  margin-top: 1.9rem;
+}
+
+/* кнопка-действие: единственная заливка акцентом на странице */
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.72rem 1.05rem;
+  border-radius: 0.9rem;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transition: filter 0.2s var(--ease);
+}
+
+.button .i {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.button:hover {
+  filter: brightness(1.12);
+}
+
+.hero__note {
+  margin-top: 1.1rem;
+  color: var(--dim);
+  font-size: 0.8rem;
+  letter-spacing: 0.01em;
+}
+
+.hero__device {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+@media (min-width: 1020px) {
+  .hero__grid {
+    grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.82fr);
+    align-items: center;
+    padding-block: clamp(3rem, 7vw, 5rem);
+  }
+
+  .hero__copy {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .hero__title,
+  .hero__lead {
+    justify-content: flex-start;
+  }
+
+  .hero__cta {
+    justify-content: flex-start;
+  }
+}
+
+/* --------------------------------------------------------------- плашки */
+
+.stores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.store {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.95rem;
+  background: var(--input);
+  color: var(--ink);
+}
+
+.store__icon {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.store__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  line-height: 1;
+  text-align: left;
+}
+
+.store__top {
+  color: var(--mute);
+  font-size: 0.55rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.store__bottom {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* -------------------------------------------------------------- телефон */
+
+/* Корпус — картинка 490×1000 с прозрачным экраном внутри (x 25…464,
+   y 22…977, радиус 77). Кадр приложения лежит под ней в вырезе. Одна
+   переменная --w задаёт масштаб, всё остальное считается от неё. */
+.phone {
+  --w: 16rem;
+  position: relative;
+  width: var(--w);
+  aspect-ratio: 490 / 1000;
+  filter: drop-shadow(0 1.8rem 2.4rem rgba(0, 0, 0, 0.55));
+}
+
+.phone__screen {
+  position: absolute;
+  inset: 2.2% 5.102%;
+  overflow: hidden;
+  border-radius: calc(var(--w) * 0.157);
+  background: var(--bg);
+}
+
+.phone__screen picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.phone__screen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.phone__frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.device {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.device__swap {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: var(--accent);
+}
+
+.device__swap picture {
+  width: 100%;
+  height: 100%;
+}
+
+.device__swap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero__device .phone {
+  --w: min(17.5rem, 72vw);
+}
+
+@media (min-width: 1020px) {
+  .hero__device .phone {
+    --w: min(20rem, 38vh);
+  }
+}
+
+/* ---------------------------------------------------------------- лента */
+
+.ribbon {
+  position: relative;
+  overflow: clip;
+  padding-block: clamp(0.5rem, 1.5vw, 1.5rem);
+  border-block: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, rgba(129, 140, 248, 0.06), transparent 70%);
+}
+
+/* CurvedLoop приходит с min-height: 100vh под демо — здесь полосе хватает
+   собственной высоты. */
+.ribbon .curved-loop-jacket {
+  min-height: 0;
+  height: clamp(8rem, 17vw, 13rem);
+}
+
+.ribbon__static {
+  display: grid;
+  place-items: center;
+  height: clamp(8rem, 17vw, 13rem);
+  overflow: hidden;
+}
+
+.ribbon__static span {
+  color: var(--z7);
+  font-size: clamp(1.5rem, 5.5vw, 3.6rem);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------- каталог */
+
+.catalog {
+  padding-block: var(--section);
+}
+
+.marquee {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(0.5rem, 1vw, 0.9rem);
+  margin-top: clamp(2rem, 4vw, 3rem);
+}
+
+/* Ширина полосы обязана быть конечной: LogoLoop дорисовывает копии, пока они
+   не заполнят контейнер, и, если ширина считается по содержимому, каждая
+   копия расширяет контейнер — движок уходит в бесконечный цикл измерений. */
+.marquee__row {
+  min-width: 0;
+  width: 100%;
+  overflow: clip;
+}
+
+.marquee__row .logoloop {
+  padding-block: 0;
+}
+
+/* Высота пункта задавалась line-height от --logoloop-logoHeight: при
+   уменьшенных постерах под ними оставался пустой блок — отсюда огромная
+   щель между полосами. Гасим строку, оставляем только картинку. */
+.marquee__row .logoloop__item {
+  font-size: 0;
+  line-height: 0;
+}
+
+.marquee__row .logoloop__item img {
+  width: auto;
+  height: clamp(7rem, 13vw, 12rem);
+  border-radius: 0.8rem;
+  background: var(--surface);
+  box-shadow: 0 1.2rem 2.6rem -1.4rem rgba(0, 0, 0, 0.95);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1rem, 3vw, 2rem);
+  margin-top: clamp(2.5rem, 5vw, 3.5rem);
+  padding-top: clamp(1.5rem, 3vw, 2rem);
+  border-top: 1px solid var(--line-soft);
+}
+
+.stat__value {
+  display: block;
+  color: var(--ink);
+  line-height: 1.05;
+}
+
+.stat__label {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--mute);
+  font-size: clamp(0.8rem, 1.1vw, 0.92rem);
+  line-height: 1.4;
+}
+
+
+
+/* ---------------------------------------------------------- что внутри */
+
+.inside {
+  padding-block: var(--section);
+}
+
+
+.chapters {
+  display: grid;
+  gap: clamp(3rem, 7vw, 5.5rem);
+  margin-top: clamp(2.5rem, 5vw, 4rem);
+}
+
+.chapter {
+  display: grid;
+  gap: clamp(2rem, 5vw, 3.5rem);
+  align-items: center;
+}
+
+.chapter__copy {
+  min-width: 0;
+}
+
+.chapter h3 {
+  font-size: clamp(1.45rem, 2.6vw, 2rem);
+  line-height: 1.1;
+}
+
+.chapter__device {
+  display: flex;
+  justify-content: center;
+}
+
+.chapter__device .phone {
+  --w: clamp(10.5rem, 42vw, 15rem);
+}
+
+.features {
+  margin-top: clamp(1.5rem, 3vw, 2rem);
+  border-top: 1px solid var(--line);
+}
+
+.feature {
+  display: grid;
+  grid-template-columns: 1.3rem minmax(0, 1fr);
+  gap: 0.9rem;
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.feature .i {
+  margin-top: 0.15rem;
+  color: var(--accent);
+  opacity: 0.9;
+}
+
+.feature h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.feature p {
+  margin-top: 0.25rem;
+  color: var(--mute);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+@media (min-width: 980px) {
+  .chapter {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.78fr);
+  }
+
+  .chapter:nth-child(even) .chapter__copy {
+    order: 2;
+  }
+
+  .chapter:nth-child(even) .chapter__device {
+    order: 1;
+  }
+}
+
+/* -------------------------------------------------------------- вопросы */
+
+.faq {
+  padding-block: var(--section);
+}
+
+.faq__grid {
+  display: grid;
+  gap: clamp(2rem, 5vw, 4rem);
+}
+
+.faq__copy .lead a {
+  color: var(--body);
+  text-decoration: underline;
+  text-decoration-color: var(--z6);
+  text-underline-offset: 0.2em;
+  transition: color 0.2s, text-decoration-color 0.2s;
+}
+
+.faq__copy .lead a:hover {
+  color: var(--ink);
+  text-decoration-color: var(--ink);
+}
+
+.faq__list {
+  border-top: 1px solid var(--line);
+}
+
+.faq__list details {
+  border-bottom: 1px solid var(--line);
+  interpolate-size: allow-keywords;
+}
+
+.faq__list summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-block: 1.1rem;
+  color: var(--body);
+  font-size: 0.98rem;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+  transition: color 0.2s;
+}
+
+.faq__list summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq__list summary:hover,
+.faq__list details[open] summary {
+  color: var(--ink);
+}
+
+.faq__mark {
+  color: var(--mute);
+  transition: transform 0.3s var(--ease), color 0.3s;
+}
+
+.faq__list details[open] .faq__mark {
+  color: var(--accent);
+  transform: rotate(180deg);
+}
+
+.faq__list details > p {
+  max-width: 62ch;
+  padding-bottom: 1.3rem;
+  color: var(--mute);
+  font-size: 0.93rem;
+  line-height: 1.65;
+}
+
+@supports (interpolate-size: allow-keywords) {
+  .faq__list details::details-content {
+    block-size: 0;
+    overflow: hidden;
+    transition: block-size 0.35s var(--ease), content-visibility 0.35s allow-discrete;
+  }
+
+  .faq__list details[open]::details-content {
+    block-size: auto;
+  }
+}
+
+@media (min-width: 900px) {
+  .faq__grid {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  }
+}
+
+/* ---------------------------------------------------------------- футер */
+
+.foot {
+  padding-block: clamp(2.5rem, 5vw, 3.5rem) 1.5rem;
+  border-top: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, rgba(129, 140, 248, 0.05), transparent 60%);
+  font-size: 0.875rem;
+}
+
+.foot__top {
+  display: grid;
+  gap: clamp(2rem, 5vw, 3rem);
+}
+
+.foot__brand img {
+  width: auto;
+  height: 1.15rem;
+}
+
+.foot__brand p {
+  max-width: 34rem;
+  margin-top: 0.9rem;
+  color: var(--dim);
+  line-height: 1.6;
+}
+
+.foot__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.foot__nav nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+}
+
+.foot__nav a {
+  color: var(--mute);
+  transition: color 0.2s;
+}
+
+.foot__nav a:hover {
+  color: var(--ink);
+}
+
+.foot__social {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.1rem;
+}
+
+.foot__social a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.foot__social .i {
+  width: 1rem;
+  height: 1rem;
+}
+
+.foot__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  margin-top: clamp(2rem, 5vw, 3rem);
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line-soft);
+  color: var(--dim);
+  font-size: 0.78rem;
+}
+
+@media (min-width: 800px) {
+  .foot__top {
+    grid-template-columns: minmax(0, 1.2fr) auto;
+  }
+
+  .foot__nav {
+    align-items: flex-end;
+  }
+
+  .foot__nav nav,
+  .foot__social {
+    justify-content: flex-end;
+  }
+}
+
+/* -------------------------------------------------------------- движение */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Canvas-фоны и бегущие строки не монтируются в JS, но если компонент
+     всё же оказался в DOM — гасим его анимации здесь. */
+  .hero .light-rays,
+  .hero .noise,
+  .ribbon .curved-loop-jacket,
+  .logoloop__list,
+  .scroll-float-text {
+    animation: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,273 @@
+/* hoshi — база: токены, шрифт, типографика, мелкая утилитарность.
+   Секции и компоненты живут в sections.css. */
+
+/* Manrope Variable, нарезанный на два подмножества: латиница и кириллица.
+   Файлы лежат в site/public/fonts с постоянными именами, чтобы их можно было
+   предзагрузить из index.html — иначе шрифт приезжает уже после первой
+   отрисовки и текст переформатируется (CLS). OFL — рядом, в OFL.txt. */
+@font-face {
+  font-family: 'Manrope Variable';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: block;
+  src: url('/fonts/manrope-cyrillic.woff2') format('woff2-variations');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: 'Manrope Variable';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: block;
+  src: url('/fonts/manrope-latin.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+/* Пока шрифт едет, текст набирается этим начертанием с метриками Manrope:
+   высота строки совпадает, и подмена не сдвигает секции. */
+@font-face {
+  font-family: 'Manrope Fallback';
+  src: local('Segoe UI'), local('Helvetica Neue'), local('Arial');
+  size-adjust: 101%;
+  ascent-override: 105%;
+  descent-override: 25%;
+  line-gap-override: 0%;
+}
+
+/* Палитра — та же, что в приложении (theme.ts): Material dark с индиго-акцентом.
+   Никаких сторонних оттенков: всё на странице выводится из этих токенов. */
+:root {
+  /* ядро */
+  --bg: #121212;
+  --z9: #181818;
+  --input: #1e1e1e;
+  --z8: #252525;
+  --border: #333333;
+  --z7: #343434;
+  --z6: #4b4b4b;
+  --z5: #6b6b6b;
+  --z4: #a1a1aa;
+  --placeholder: #aaaaaa;
+  --gray3: #d4d4d4;
+  --text: #ffffff;
+
+  --accent: #818cf8;
+  --ongoing: #60a5fa;
+  --green: #4ade80;
+  --orange: #fb923c;
+  --red: #f87171;
+  --red6: #ef4444;
+
+  /* полупрозрачные */
+  --selected: rgba(129, 140, 248, 0.32);
+  --selected-border: rgba(129, 140, 248, 0.95);
+  --popup: rgba(18, 18, 18, 0.96);
+
+  /* стекло */
+  --flat-bg: rgba(30, 30, 30, 0.72);
+  --glass-tint: rgba(18, 18, 18, 0.22);
+  --glass-text: rgba(255, 255, 255, 0.78);
+  --hairline: rgba(255, 255, 255, 0.16);
+
+  /* роли страницы */
+  --ink: var(--text);
+  --body: var(--gray3);
+  --mute: var(--z4);
+  --dim: var(--z5);
+  --line: var(--border);
+  --line-soft: rgba(255, 255, 255, 0.07);
+  --surface: var(--input);
+  --surface-strong: var(--z8);
+
+  --shell: 76rem;
+  --head: 4.25rem;
+  --section: clamp(4.5rem, 9vw, 8rem);
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --font: 'Manrope Variable', 'Manrope Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, system-ui, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:where(h1, h2, h3, h4, p, ul, ol, figure) {
+  margin: 0;
+  padding: 0;
+}
+
+:where(ul, ol) {
+  list-style: none;
+}
+
+html {
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--head) + 1rem);
+  scrollbar-color: var(--z6) transparent;
+  overflow-x: clip;
+}
+
+body {
+  margin: 0;
+  min-width: 18rem;
+  background: var(--bg);
+  color: var(--body);
+  font-family: var(--font);
+  font-size: 1rem;
+  line-height: 1.5;
+  font-synthesis-weight: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+img,
+picture,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+img {
+  height: auto;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+::selection {
+  background: var(--selected);
+  color: var(--text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 0.4rem;
+}
+
+:where(section[id]) {
+  scroll-margin-top: var(--head);
+}
+
+/* ------------------------------------------------------------ раскладка */
+
+.shell {
+  width: 100%;
+  max-width: var(--shell);
+  margin-inline: auto;
+  padding-inline: clamp(1.15rem, 4.5vw, 2.5rem);
+}
+
+.sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.i {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+}
+
+/* ----------------------------------------------------------- типографика */
+
+.lead {
+  max-width: 54ch;
+  margin-top: 0.9rem;
+  color: var(--mute);
+  font-size: clamp(1rem, 1.15vw, 1.08rem);
+  line-height: 1.65;
+}
+
+.section-head {
+  max-width: 46rem;
+}
+
+.section-head--split {
+  max-width: none;
+  display: grid;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+/* Надзаголовок — служебная подпись, а не украшение: моноширинный шрифт,
+   нейтральный цвет, без градиента. Регистр не меняем, иначе iOS станет IOS. */
+.eyebrow {
+  display: inline-block;
+  color: var(--z4);
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+/* ScrollFloat рендерит <h2> со своим текстовым классом под демо-размеры —
+   здесь подчинён типографике страницы. */
+.section__title {
+  margin: 0;
+  overflow: visible;
+  font-weight: 700;
+}
+
+.section__title .scroll-float-text {
+  font-family: inherit;
+  font-size: clamp(2rem, 4.6vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.04em;
+  text-align: left;
+  text-transform: none;
+}
+
+/* --------------------------------------------------------------- ссылки */
+
+.skip {
+  position: absolute;
+  left: 1rem;
+  top: -4.5rem;
+  z-index: 100;
+  padding: 0.7rem 1rem;
+  border-radius: 0.8rem;
+  background: var(--ink);
+  color: #0b0910;
+  font-weight: 700;
+  transition: top 0.2s var(--ease);
+}
+
+.skip:focus-visible {
+  top: 1rem;
+}
+
+/* --------------------------------------------------------- движение */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

@@ -1,10 +1,14 @@
 node_modules/
 dist/
+.ssr/
+.tmp/
 .capture/
 .shots/
+.backup/
 .screens-src/
 .capture-log.json
 *.local
 .DS_Store
-.vite/
 /.ignore
+.npm-cache/
+__pycache__/
