@@ -18,6 +18,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'vite';
+import { LEGAL_PAGES } from '../site/src/data/legal.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -25,6 +26,7 @@ const SSR_DIR = path.join(ROOT, '.ssr');
 
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const gzip = (body) => zlib.gzipSync(body, { level: 9 }).length;
+const esc = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
 /* Клиентская сборка: site/ -> dist/ ровно так, как описано в vite.config.js. */
 await build({ logLevel: 'warn' });
@@ -47,17 +49,43 @@ if (process.env.PRERENDER === '0') {
 
   const serverEntry = path.join(SSR_DIR, 'entry-server.js');
   const { render } = await import(pathToFileURL(serverEntry).href);
-  const markup = render();
 
   const indexFile = path.join(DIST, 'index.html');
-  const html = await fs.readFile(indexFile, 'utf8');
-  if (!html.includes('<div id="root"></div>')) {
+  const template = await fs.readFile(indexFile, 'utf8');
+  if (!template.includes('<div id="root"></div>')) {
     throw new Error('build: в dist/index.html нет пустого <div id="root"> — нечего заполнять');
   }
-  await fs.writeFile(indexFile, html.replace('<div id="root"></div>', `<div id="root">${markup}</div>`), 'utf8');
+
+  const fill = (page, markup) =>
+    page.replace('<div id="root"></div>', `<div id="root">${markup}</div>`);
+
+  /* Юридические документы: своя разметка и свой <head> на каждый адрес.
+     Файлы лежат в корне с расширением — так /terms отдаёт GitHub Pages,
+     а ссылки в текстах и футере указывают на /terms без расширения. */
+  const docHead = (page, doc) =>
+    page
+      .replace(/<title>[^<]*<\/title>/, `<title>${esc(doc.title)} — hoshi</title>`)
+      .replace(/(<meta\s+name="description"[^>]*content=")[^"]*/s, `$1${esc(doc.description)}`)
+      .replace(/(<meta\s+property="og:title"[^>]*content=")[^"]*/s, `$1${esc(doc.title)} — hoshi`)
+      .replace(/(<meta\s+property="og:description"[^>]*content=")[^"]*/s, `$1${esc(doc.description)}`)
+      /* кадр приложения документам не нужен — предзагрузка только мешает */
+      .replace(/\s*<link rel="preload" as="image" href="\.\/screens\/title\.avif"[^>]*>/, '');
+
+  for (const doc of LEGAL_PAGES) {
+    const page = docHead(template, doc);
+    await fs.writeFile(
+      path.join(DIST, `${doc.slug}.html`),
+      fill(page, render(`/${doc.slug}`)),
+      'utf8',
+    );
+  }
+
+  const markup = render('/');
+  await fs.writeFile(indexFile, fill(template, markup), 'utf8');
   await fs.rm(SSR_DIR, { recursive: true, force: true });
 
   console.log(`build: predrender ${kb(markup.length)} разметки в dist/index.html`);
+  console.log(`build: страниц документов ${LEGAL_PAGES.length}`);
 }
 
 /* Итог одной строкой на единицу: по этим числам потом сравнивают версии. */

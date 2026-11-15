@@ -204,6 +204,40 @@ const fonts = [...files].filter((name) => name.endsWith('.woff2'));
 check(fonts.length >= 2, `шрифт самохостится (${fonts.length} woff2)`);
 check(fonts.some((name) => name.includes('cyrillic')), 'в наборе есть кириллица');
 
+/* ------------------------------------------------------- документы */
+
+const DOC_SLUGS = [
+  'terms',
+  'privacy',
+  'consent',
+  'consent-dissemination',
+  'rightsholders',
+  'profile-delete',
+];
+const docPages = [];
+for (const slug of DOC_SLUGS) {
+  try {
+    docPages.push(await fs.readFile(path.join(DIST, `${slug}.html`), 'utf8'));
+  } catch {
+    docPages.push('');
+  }
+}
+const docOk = (page) =>
+  /id="root">\s*<\w/.test(page) &&
+  (page.match(/<h1[\s>]/g) ?? []).length === 1 &&
+  /<main[^>]*class="doc"/.test(page) &&
+  page.includes('id="doc-contacts"') &&
+  page.includes('Связанные документы');
+check(
+  DOC_SLUGS.every((slug, index) => docOk(docPages[index])),
+  `страницы документов предрендерены (${docPages.filter(docOk).length}/${DOC_SLUGS.length})`,
+);
+check(
+  DOC_SLUGS.every((slug) => html.includes(`href="./${slug}"`)),
+  'футер ссылается на каждый документ',
+);
+check(!docPages.some((page) => page.includes('смотрится просто')), 'документы не несут заголовок героя');
+
 /* ---------------------------------------------------------- доступность */
 
 check(/<a class="skip" href="#main"/.test(html), 'есть skip-link');

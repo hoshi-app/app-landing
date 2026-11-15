@@ -712,18 +712,205 @@ main {
 }
 
 @media (min-width: 800px) {
+  /* Шесть юридических ссылок длиннее прежних трёх якорей: колонку с ними
+     ограничиваем долей ширины, иначе сетка `auto` выдавливает бренд в ноль. */
   .foot__top {
-    grid-template-columns: minmax(0, 1.2fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
   }
 
   .foot__nav {
     align-items: flex-end;
   }
 
-  .foot__nav nav,
+  .foot__nav nav {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    justify-content: end;
+    gap: 0.45rem 1.6rem;
+  }
+
   .foot__social {
     justify-content: flex-end;
   }
+}
+
+/* ------------------------------------------------- юридические документы */
+
+/* Документы — обычная читаемая страница: без липкой шапки с анимацией,
+   поэтому общий отрицательный отступ main здесь не нужен. */
+main.doc {
+  margin-top: 0;
+  padding-block: clamp(2.5rem, 6vw, 4.5rem) var(--section);
+}
+
+.doc__bar {
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.doc__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  height: var(--head);
+}
+
+.doc__row img {
+  width: auto;
+  height: 1.1rem;
+}
+
+.doc__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--mute);
+  font-size: 0.85rem;
+  transition: color 0.2s;
+}
+
+.doc__back:hover {
+  color: var(--ink);
+}
+
+.doc__back-icon {
+  width: 1rem;
+  height: 1rem;
+  transform: rotate(90deg);
+}
+
+.doc__wrap {
+  max-width: 47rem;
+  margin-inline: auto;
+}
+
+.doc__title {
+  margin-top: 0.7rem;
+  font-size: clamp(1.9rem, 4vw, 2.8rem);
+  line-height: 1.07;
+}
+
+.doc__intro {
+  margin-top: 1rem;
+  color: var(--mute);
+  font-size: clamp(0.98rem, 1.1vw, 1.05rem);
+  line-height: 1.68;
+}
+
+.doc__date {
+  margin-top: 1.2rem;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+}
+
+.doc__toc {
+  margin-top: clamp(1.8rem, 4vw, 2.4rem);
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--z9);
+}
+
+.doc__toc ol {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.doc__toc a {
+  color: var(--mute);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  transition: color 0.2s;
+}
+
+.doc__toc a:hover {
+  color: var(--ink);
+}
+
+@media (min-width: 640px) {
+  .doc__toc ol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 1.75rem;
+  }
+}
+
+.doc__section {
+  margin-top: clamp(2rem, 4vw, 2.75rem);
+}
+
+.doc__section h2 {
+  font-size: clamp(1.2rem, 2vw, 1.42rem);
+  line-height: 1.25;
+}
+
+.doc__section p {
+  margin-top: 0.75rem;
+  color: var(--body);
+  font-size: 0.95rem;
+  line-height: 1.72;
+}
+
+.doc__section ul {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.doc__section li {
+  position: relative;
+  padding-left: 1.15rem;
+  color: var(--body);
+  font-size: 0.95rem;
+  line-height: 1.66;
+}
+
+.doc__section li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.66em;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0.7;
+}
+
+.doc__foot {
+  margin-top: clamp(2.2rem, 4vw, 3rem);
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--line);
+}
+
+.doc__foot h2 {
+  font-size: 1rem;
+}
+
+.doc__foot ul {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}
+
+.doc__foot li {
+  color: var(--mute);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.doc__foot a {
+  color: var(--body);
+  text-decoration: underline;
+  text-decoration-color: var(--z6);
+  text-underline-offset: 0.2em;
+  transition: color 0.2s, text-decoration-color 0.2s;
+}
+
+.doc__foot a:hover {
+  color: var(--ink);
+  text-decoration-color: var(--ink);
 }
 
 /* -------------------------------------------------------------- движение */

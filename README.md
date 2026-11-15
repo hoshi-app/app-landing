@@ -45,9 +45,29 @@ npm run brand      # logo.svg, favicon.*, apple-touch-icon.png
 | Каталог | Две полосы постеров встречным ходом, три цифры каталога | `LogoLoop`, `Counter` |
 | Что внутри | Три главы — поиск, список, страница тайтла | `ScrollFloat` + `AnimatedContent` + скриншоты приложения |
 | Вопросы | Аккордеон на `<details name="faq">` | нативный HTML |
-| Футер | Дисклеймер, кредиты, разделы, Telegram | — |
+| Футер | Дисклеймер, кредиты, документы, Telegram | — |
 
 Цифры каталога — настоящие: 24 091 тайтл и 46 жанров.
+
+## Документы
+
+Рядом с лендингом лежат шесть юридических страниц; собирает их то же приложение.
+
+| Адрес | Документ |
+|---|---|
+| `/terms` | Пользовательское соглашение |
+| `/privacy` | Политика конфиденциальности |
+| `/consent` | Согласие на обработку персональных данных |
+| `/consent-dissemination` | Согласие на распространение персональных данных |
+| `/rightsholders` | Правила для правообладателей |
+| `/profile-delete` | Удаление аккаунта |
+
+Тексты живут в `site/src/data/legal.js`, разметка — одна на всех, в
+`site/src/sections/Legal.jsx`. Сборка рендерит каждому документу свой
+`dist/<slug>.html` со своим `<title>` и `description`, а ссылки в футере и между
+документами указывают на адрес без расширения: `/terms` отдаёт GitHub Pages,
+`tools/serve.mjs` повторяет это поведение на превью. Контакты (`DOC_CONTACT`) и
+дата редакции правятся в одном месте — в `legal.js`.
 
 ## Палитра
 
@@ -77,7 +97,8 @@ site/                        точка входа Vite
     entry-server.jsx         renderToString для предрендера
     App.jsx                  состав страницы
     data/landing.js          весь текст, списки и цифры
-    sections/                Header, Hero, Ribbon, Catalog, Inside, Faq, Footer
+    data/legal.js            тексты юридических документов и их список
+    sections/                Header, Hero, Ribbon, Catalog, Inside, Faq, Legal, Footer
     components/              Icons (спрайт), Phone, Picture, StoreBadges, ClientOnly
     hooks/                   usePrefersReducedMotion
     styles/                  base.css (токены, шрифт) и sections.css
@@ -112,7 +133,8 @@ vite.config.js               root: site, base: './', dist снаружи
 
 1. `vite build` — клиентский бандл в `dist/`, статика из `site/public` копируется сама.
 2. `vite build --ssr src/entry-server.jsx` — та же страница собирается для Node.
-3. `renderToString(<App/>)` вставляется внутрь `<div id="root">` в готовый `index.html`.
+3. `renderToString(<App path=…/>)` вставляется внутрь `<div id="root">` в готовый `index.html`;
+   так же рендерится каждый документ, но в свой `<slug>.html` и со своим `<head>`.
 
 Поэтому в `dist/index.html` лежит настоящий текст: он есть до запуска скриптов, его видят
 краулеры, и он же достаётся `llms.txt`-читателям. `verify` отдельно проверяет, что
@@ -165,8 +187,8 @@ motion, gsap) — это цена анимаций, поэтому бюджет 
 ## Доступность и уважение к настройкам
 
 - Страница читается и проходится с клавиатуры: skip-link, `:focus-visible`, аккордеон
-  на `<details name>`. Навигация по разделам — в шапке на десктопе и в футере на телефоне;
-  отдельного мобильного меню нет вовсе.
+  на `<details name>`. Навигация по разделам — в шапке на десктопе; на телефоне её нет,
+  в футере лежат документы и Telegram, отдельного мобильного меню нет вовсе.
 - `prefers-reduced-motion: reduce` не монтирует лучи и зерно, анимации заголовков
   отключаются сами (gsap matchMedia), текст виден сразу. `shoot` проверяет, что в покое
   не осталось ни одной бегущей анимации.
@@ -179,7 +201,9 @@ motion, gsap) — это цена анимаций, поэтому бюджет 
 
 `npm run build` кладёт готовый сайт в `dist/` — это статика без серверной части.
 `base: './'` и относительные пути к картинкам означают, что подпапка вида
-`user.github.io/app-landing/` работает без правок.
+`user.github.io/app-landing/` работает без правок. Документы лежат в `dist/<slug>.html`,
+поэтому хостинг должен отдавать `/terms` файлом `terms.html` — GitHub Pages делает это сам,
+`npm run preview` тоже.
 
 ## Права
 

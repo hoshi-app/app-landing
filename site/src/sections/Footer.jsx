@@ -1,5 +1,6 @@
 import { Icon } from '../components/Icons';
-import { NAV, TELEGRAM } from '../data/landing';
+import { TELEGRAM } from '../data/landing';
+import { DOCS, LEGAL_ORDER, legalHref } from '../data/legal';
 
 export default function Footer() {
   return (
@@ -13,10 +14,10 @@ export default function Footer() {
           </div>
 
           <div className="foot__nav">
-            <nav aria-label="Разделы страницы">
-              {NAV.map((link) => (
-                <a key={link.href} href={link.href}>
-                  {link.label}
+            <nav aria-label="Документы">
+              {LEGAL_ORDER.map((slug) => (
+                <a key={slug} href={legalHref(slug)}>
+                  {DOCS[slug].nav}
                 </a>
               ))}
             </nav>

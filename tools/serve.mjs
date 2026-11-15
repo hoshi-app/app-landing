@@ -78,14 +78,23 @@ function handler(root) {
       body = await fs.readFile(file);
       type = MIME[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
     } catch {
-      // сборка однофайловая: любой неизвестный путь отдаёт index.html
-      file = path.join(root, 'index.html');
+      // без расширения сначала пробуем одноимённый .html: /terms -> terms.html,
+      // иначе главная отдавала бы разметку лендинга на адресе документа
+      const alias = `${file}.html`;
       try {
-        body = await fs.readFile(file);
+        body = await fs.readFile(alias);
+        file = alias;
         type = MIME['.html'];
       } catch {
-        res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('not found');
-        return;
+        // сборка однофайловая: любой неизвестный путь отдаёт index.html
+        file = path.join(root, 'index.html');
+        try {
+          body = await fs.readFile(file);
+          type = MIME['.html'];
+        } catch {
+          res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('not found');
+          return;
+        }
       }
     }
 
@@ -108,13 +117,14 @@ function handler(root) {
  * Поднимает раздачу каталога. Возвращает сервер и адрес — закрывать сервер
  * вызывающему коду.
  */
-export function start(dir = 'dist', port = 4174) {
+export function start(dir = 'dist', port = 4174, host = '127.0.0.1') {
   const root = path.resolve(ROOT, dir);
   const server = http.createServer(handler(root));
   return new Promise((resolve, reject) => {
     server.once('error', reject);
-    server.listen(port, '127.0.0.1', () => {
-      resolve({ server, url: `http://127.0.0.1:${port}/` });
+    server.listen(port, host, () => {
+      const shown = host === '0.0.0.0' ? '127.0.0.1' : host;
+      resolve({ server, url: `http://${shown}:${port}/` });
     });
   });
 }
@@ -123,7 +133,11 @@ const isMain =
   process.argv[1] !== undefined && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 
 if (isMain) {
+  // HOST=0.0.0.0 — открыть сайт в локальной сети, а не только на этой машине.
+  // В cmd `set HOST=0.0.0.0 && …` кладёт в значение хвостовой пробел, и
+  // getaddrinfo падает на "0.0.0.0 " — отсюда trim.
+  const host = (process.env.HOST ?? '').trim() || '127.0.0.1';
   const [dir = 'dist', port = '4174'] = process.argv.slice(2);
-  const { url } = await start(dir, Number(port));
-  console.log(`landing: ${url}  (${dir}/)`);
+  const { url } = await start(dir, Number(port), host);
+  console.log(`landing: ${url}  (${dir}/, ${host})`);
 }
