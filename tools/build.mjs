@@ -138,20 +138,7 @@ if (process.env.PRERENDER === '0') {
   ];
 
   for (const logPage of logPages) {
-    let page = docHead(template, logPage.head);
-    if (logPage.entry?.cover) {
-      const { cover } = logPage.entry;
-      const type = cover.src.endsWith('.webp')
-        ? 'image/webp'
-        : cover.src.endsWith('.png')
-          ? 'image/png'
-          : 'image/jpeg';
-      page = page
-        .replace(/(<meta\s+property="og:image"[^>]*content=")[^"]*/, `$1../../${cover.src}`)
-        .replace(/(<meta\s+property="og:image:type"[^>]*content=")[^"]*/, `$1${type}`)
-        .replace(/(<meta\s+property="og:image:width"[^>]*content=")[^"]*/, `$1${cover.width}`)
-        .replace(/(<meta\s+property="og:image:height"[^>]*content=")[^"]*/, `$1${cover.height}`);
-    }
+    const page = docHead(template, logPage.head);
     await fs.writeFile(path.join(logDir, logPage.file), fill(page, render(logPage.url)), 'utf8');
 
     /* Копия исходника рядом со страницей: /faq/changelog/<slug>/export.md.

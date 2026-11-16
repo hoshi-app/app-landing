@@ -15,35 +15,19 @@ const ROOT = '../../';
 
 const isExternal = (url) => /^https?:/i.test(url);
 
-/** Круглый знак записи: аватар канала стоит над заголовком вместо обложки. */
-function Logo({ logo }) {
-  if (!logo) return null;
+/** Картинка записи: одна на новость, размеры уже прочитаны из файла на сборке. */
+function Img({ img }) {
+  if (!img) return null;
   return (
-    <p className="log__logo">
+    <p className="log__img">
       <img
-        src={`${ROOT}${logo.src}`}
-        width={logo.width}
-        height={logo.height}
-        alt={logo.alt}
+        src={`${ROOT}${img.src}`}
+        width={img.width}
+        height={img.height}
+        alt={img.alt}
         decoding="async"
       />
     </p>
-  );
-}
-
-/** Обложка записи: размеры в разметке обязательны, иначе страница дёргается. */
-function Cover({ cover }) {
-  if (!cover) return null;
-  return (
-    <img
-      className="log__cover"
-      src={`${ROOT}${cover.src}`}
-      width={cover.width}
-      height={cover.height}
-      alt={cover.alt}
-      loading="lazy"
-      decoding="async"
-    />
   );
 }
 
@@ -141,7 +125,7 @@ export default function Changelog({ page }) {
             Все обновления
           </a>
           <article>
-            <Logo logo={page.logo} />
+            <Img img={page.img} />
             <p className="eyebrow">hoshi · обновления</p>
             <h1 className="doc__title">{page.title}</h1>
             <p className="doc__date">
@@ -149,7 +133,6 @@ export default function Changelog({ page }) {
             </p>
             <p className="doc__intro">{page.summary}</p>
 
-            <Cover cover={page.cover} />
             <Channel channel={page.channel} />
             <Body html={page.html} />
             <Cta cta={page.cta} />

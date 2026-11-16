@@ -152,7 +152,7 @@ GitHub не видит у домена свои адреса. Лечение: с
 | Адрес | Что отдаёт |
 |---|---|
 | `/faq/changelog/` | список записей: дата, тег, заголовок, лид |
-| `/faq/changelog/<slug>` | запись целиком: знак или обложка, текст, кнопка действия |
+| `/faq/changelog/<slug>` | запись целиком: картинка, текст, кнопка действия |
 | `/faq/changelog/<slug>/export.md` | исходный `.md` записи — его приложение рисует само |
 | `/faq/changelog/feed.json` | маршрутизатор для приложения: список и актуальные сплэши |
 
@@ -164,24 +164,23 @@ GitHub не видит у домена свои адреса. Лечение: с
 
 ```md
 ---
-title: Мы создали телеграм канал с обновлениями
+title: Теперь в hoshi есть сплэши
 date: 2026-11-16
 tag: Обновление
-summary: Обновления теперь приходят в Telegram…
-logo: changelog/telegram.svg
-logo-alt: Логотип Telegram
-logo-width: 1000
-logo-height: 1000
-channel-label: hoshi beta updates
-channel-handle: t.me/+sFVfKMdNwFIxNjEy
-channel-url: https://t.me/+sFVfKMdNwFIxNjEy
-cta-label: Открыть канал
-cta-url: https://t.me/+sFVfKMdNwFIxNjEy
-note: hoshi beta updates · только обновления приложения
+summary: При запуске hoshi показывает экран с тем, что важно…
+img: favicon.svg
+img-alt: Иконка hoshi: белая звезда на тёмном фоне
+cta-label: Что нового
+cta-url: https://hoshi.tv/faq/changelog/
+note: hoshi · новости приложения
 actual: true
 ---
 
-Текст записи: абзацы, списки и прочий markdown.
+Сплэш — короткий экран при запуске. Одна новость — один экран.
+
+- обновления приложения — когда вышли и что в них нового;
+- новые функции и разделы;
+- важные объявления и ссылки.
 ```
 
 | Поле | Обязательно | Что значит |
@@ -190,8 +189,8 @@ actual: true
 | `date` | да | `YYYY-MM-DD`; список сортируется по убыванию |
 | `tag` | да | бейдж: «Обновление», «Акция», «Новость» |
 | `summary` | да | лид: description, тизер в списке, поле фида |
-| `logo` | нет | круглый знак над заголовком; нужны `logo-alt`, `logo-width`, `logo-height` |
-| `cover` | нет | широкая обложка; нужны `cover-alt`, `cover-width`, `cover-height`; она же `og:image` |
+| `img` | нет | картинка записи: путь от корня `site/public`; размеры читаются из файла |
+| `img-alt` | с `img` | альтернативный текст картинки |
 | `channel-*` | нет | карточка канала: `label`, `handle` и `url` — все три сразу |
 | `cta-*` | нет | кнопка действия: `label` и `url` (только `https:`) |
 | `note` | нет | мелкая подпись под кнопкой |
@@ -203,7 +202,8 @@ actual: true
 ### Как добавить запись
 
 1. Файл `site/src/data/changelog/<slug>.md` — slug латиницей, цифрами и дефисом.
-2. Картинки — в `site/public/`, путь в front-matter от корня сайта.
+2. Картинка — файл в `site/public/`, в front-matter только путь от его корня
+   (`img`); width/height сборка прочитает из файла сама.
 3. `git push` в `main`. CI собирает, гоняет `verify` и публикует: страница,
    `export.md` и `feed.json` появляются сами.
 
@@ -223,7 +223,7 @@ actual: true
       "slug": "splash-update",
       "date": "2026-11-16",
       "tag": "Обновление",
-      "title": "Мы создали телеграм канал с обновлениями",
+      "title": "Теперь в hoshi есть сплэши",
       "summary": "…",
       "url": "https://hoshi.tv/faq/changelog/splash-update",
       "md": "https://hoshi.tv/faq/changelog/splash-update/export.md"
@@ -250,7 +250,7 @@ actual: true
 1. Забирать фид при старте и при выходе на передний план, TTL ~1 час; при ошибке —
    последняя удачная копия из кэша.
 2. Сплэш — записи из `actual` (от старых к новым, по одной за запуск); последняя в блоке —
-   самая свежая. Заголовок, знак, канал, кнопки и лид берутся из её `md`
+   самая свежая. Заголовок, картинка, канал, кнопки и текст берутся из её `md`
    (front-matter + markdown); `version` годится для «показать один раз».
 3. Список новостей — `entries`; «Подробнее» открывает `url` во встроенном браузере
    (SFSafariViewController / Custom Tabs), поэтому вёрстка остаётся на сайте.

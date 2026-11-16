@@ -17,6 +17,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { marked } from 'marked';
+import { imageSize } from './image-size.mjs';
 import {
   CHANGELOG_DIR,
   LIST_PAGE,
@@ -30,6 +31,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /** Каталог с новостями: один .md — одна запись. */
 export const MD_DIR = path.join(ROOT, 'site/src/data/changelog');
 
+/** Статика сайта: картинки новостей подключаются путём от её корня. */
+const PUBLIC_DIR = path.join(ROOT, 'site/public');
+
 /* Общие правила отдаём наружу: сборка и проверки импортируют их отсюда. */
 export { CHANGELOG_DIR, LIST_PAGE, changelogForPath, changelogHref, dateLabel };
 
@@ -39,14 +43,8 @@ const KEYS = new Set([
   'date',
   'tag',
   'summary',
-  'logo',
-  'logo-alt',
-  'logo-width',
-  'logo-height',
-  'cover',
-  'cover-alt',
-  'cover-width',
-  'cover-height',
+  'img',
+  'img-alt',
   'channel-label',
   'channel-handle',
   'channel-url',
@@ -94,34 +92,30 @@ function parseFrontMatter(source, file) {
   return { data, body };
 }
 
-/** Целое положительное число из front-matter или null, если поле не задано. */
-function dimension(data, key, file) {
-  const value = data[key];
-  if (value === undefined) return null;
-  const number = Number(value);
-  if (!Number.isInteger(number) || number <= 0) fail(file, `«${key}» — целое число больше нуля`);
-  return number;
-}
-
-/** Картинка: src, alt и размеры — либо ничего. Размеры нужны, чтобы страница не дёргалась. */
-function image(data, prefix, file) {
-  const src = data[prefix];
-  const alt = data[`${prefix}-alt`];
-  const width = dimension(data, `${prefix}-width`, file);
-  const height = dimension(data, `${prefix}-height`, file);
+/** Картинка новости: путь от корня site/public; размеры читаются из файла. */
+async function image(data, file) {
+  const src = data.img;
+  const alt = data['img-alt'];
 
   if (!src) {
-    if (alt !== undefined || width !== null || height !== null) {
-      fail(file, `«${prefix}-*» заданы без «${prefix}»`);
-    }
+    if (alt !== undefined) fail(file, '«img-alt» задан без «img»');
     return null;
   }
-
-  if (!alt) fail(file, `«${prefix}-alt» обязателен вместе с «${prefix}»`);
-  if (!width || !height) {
-    fail(file, `«${prefix}-width» и «${prefix}-height» обязательны вместе с «${prefix}»`);
+  if (!alt) fail(file, '«img-alt» обязателен вместе с «img»');
+  if (!/^[a-z0-9][a-z0-9._/-]*$/i.test(src) || src.includes('..') || src.startsWith('/')) {
+    fail(file, '«img» — путь от корня site/public, без «..» и схемы');
   }
-  return { src, width, height, alt };
+
+  let buffer;
+  try {
+    buffer = await fs.readFile(path.join(PUBLIC_DIR, src));
+  } catch {
+    fail(file, `нет файла site/public/${src}`);
+  }
+  const size = imageSize(buffer, src);
+  if (!size) fail(file, `не читаются размеры site/public/${src}`);
+
+  return { src, width: size.width, height: size.height, alt };
 }
 
 /** Карточка канала: подпись, адрес для чтения и ссылка — все три или ничего. */
@@ -168,7 +162,7 @@ function isoDate(value, file) {
 }
 
 /** Один файл → одна запись. slug берётся из имени файла, отдельного поля нет. */
-function parseEntry(source, filename) {
+async function parseEntry(source, filename) {
   const slug = path.basename(filename, '.md');
   if (!SLUG_RE.test(slug)) {
     fail(filename, `имя файла — это slug: только латиница, цифры и дефис (${slug})`);
@@ -189,8 +183,7 @@ function parseEntry(source, filename) {
     /* HTML собирается заранее: браузеру не нужен markdown-парсер, а сервер и
        клиент получают одну и ту же строку — гидратация не расходится. */
     html: marked.parse(body, { gfm: true, breaks: false }),
-    logo: image(data, 'logo', filename),
-    cover: image(data, 'cover', filename),
+    img: await image(data, filename),
     channel: channel(data, filename),
     cta: cta(data, filename),
     note: data.note || null,
@@ -216,7 +209,7 @@ export async function loadChangelog() {
   const entries = [];
   const seen = new Set();
   for (const name of files) {
-    const entry = parseEntry(await fs.readFile(path.join(MD_DIR, name), 'utf8'), name);
+    const entry = await parseEntry(await fs.readFile(path.join(MD_DIR, name), 'utf8'), name);
     if (seen.has(entry.slug)) fail(name, `slug «${entry.slug}» уже занят другим файлом`);
     seen.add(entry.slug);
     entries.push(entry);

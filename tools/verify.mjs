@@ -20,6 +20,7 @@ import {
   MD_DIR,
   changelogForPath,
 } from './changelog.mjs';
+import { imageSize, webpSize } from './image-size.mjs';
 import { NOT_FOUND } from '../site/src/data/notFound.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -123,20 +124,6 @@ for (const href of broken) fail.push(`  ссылка #${href} не находи�
 
 const imgTags = [...html.matchAll(/<img\b[^>]*>/g)].map((match) => match[0]);
 check(imgTags.length > 0 && imgTags.length <= 90, `картинок ${imgTags.length} (бюджет 90)`);
-
-function webpSize(buffer) {
-  if (buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WEBP') return null;
-  const type = buffer.toString('ascii', 12, 16);
-  if (type === 'VP8X') return { width: 1 + buffer.readUIntLE(24, 3), height: 1 + buffer.readUIntLE(27, 3) };
-  if (type === 'VP8 ') {
-    return { width: buffer.readUInt16LE(26) & 0x3fff, height: buffer.readUInt16LE(28) & 0x3fff };
-  }
-  if (type === 'VP8L') {
-    const bits = buffer.readUInt32LE(21);
-    return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
-  }
-  return null;
-}
 
 const checked = new Set();
 for (const tag of imgTags) {
@@ -288,18 +275,10 @@ check(
 check(
   CHANGELOG.every(
     (entry) =>
-      !entry.cover ||
-      (Boolean(entry.cover.src) && Boolean(entry.cover.alt) && entry.cover.width > 0 && entry.cover.height > 0),
+      !entry.img ||
+      (Boolean(entry.img.src) && Boolean(entry.img.alt) && entry.img.width > 0 && entry.img.height > 0),
   ),
-  'у обложек есть src, alt и размеры',
-);
-check(
-  CHANGELOG.every(
-    (entry) =>
-      !entry.logo ||
-      (Boolean(entry.logo.src) && Boolean(entry.logo.alt) && entry.logo.width > 0 && entry.logo.height > 0),
-  ),
-  'у круглых знаков есть src, alt и размеры',
+  'у картинок записей есть src, alt и размеры',
 );
 check(
   CHANGELOG.every(
@@ -340,8 +319,7 @@ check(
   'у каждой записи есть <slug>/export.md',
 );
 check(
-  CHANGELOG.every((entry) => !entry.logo || files.has(entry.logo.src)) &&
-    CHANGELOG.every((entry) => !entry.cover || files.has(entry.cover.src)),
+  CHANGELOG.every((entry) => !entry.img || files.has(entry.img.src)),
   'картинки записей собраны в dist',
 );
 
@@ -373,8 +351,7 @@ const entryOk = (entry, page) =>
   !page.includes('href="../"') &&
   page.includes('="../../assets/') &&
   page.includes(entry.html.trim()) &&
-  (!entry.cover || page.includes(`src="../../${entry.cover.src}"`)) &&
-  (!entry.logo || page.includes(`src="../../${entry.logo.src}"`)) &&
+  (!entry.img || page.includes(`src="../../${entry.img.src}"`)) &&
   (!entry.channel || page.includes(`href="${entry.channel.url}"`));
 check(
   CHANGELOG.every((entry, index) => entryOk(entry, entryPages[index])),
@@ -400,33 +377,15 @@ const exportCopies = await Promise.all(
 );
 check(exportCopies.every(Boolean), 'export.md — побайтная копия исходного .md');
 
-/* Размеры в front-matter обязаны совпадать с файлами: по ним страница держит
-   место под картинку, а приложение рисует hero без прыжка. */
-const svgSize = (text) => {
-  const width = text.match(/<svg[^>]*\swidth="([\d.]+)px"/i);
-  const height = text.match(/<svg[^>]*\sheight="([\d.]+)px"/i);
-  if (width && height) return { width: Number(width[1]), height: Number(height[1]) };
-  const box = text.match(/<svg[^>]*\sviewBox="0 0 ([\d.]+) ([\d.]+)"/i);
-  return box ? { width: Number(box[1]), height: Number(box[2]) } : null;
-};
-
+/* Размеры картинки читаются из файла на сборке — сверяем с тем, что попало
+   в разметку: по ним страница держит место и не дёргается. */
 for (const entry of CHANGELOG) {
-  for (const [kind, picture] of [
-    ['знак', entry.logo],
-    ['обложка', entry.cover],
-  ]) {
-    if (!picture) continue;
-    const file = path.join(DIST, picture.src);
-    const actual = picture.src.endsWith('.webp')
-      ? webpSize(await fs.readFile(file))
-      : picture.src.endsWith('.svg')
-        ? svgSize(await fs.readFile(file, 'utf8'))
-        : null;
-    check(
-      Boolean(actual) && actual.width === picture.width && actual.height === picture.height,
-      `${kind} ${picture.src} совпадает по размерам`,
-    );
-  }
+  if (!entry.img) continue;
+  const actual = imageSize(await fs.readFile(path.join(DIST, entry.img.src)), entry.img.src);
+  check(
+    Boolean(actual) && actual.width === entry.img.width && actual.height === entry.img.height,
+    `картинка ${entry.img.src} совпадает по размерам`,
+  );
 }
 
 let feed = null;

@@ -959,29 +959,21 @@ main.doc {
   line-height: 1.55;
 }
 
-.log__cover {
-  display: block;
-  width: 100%;
-  height: auto;
-  margin-top: 1.4rem;
-  border: 1px solid var(--line);
-  border-radius: 1rem;
-}
-
-/* Круглый знак-аватар: канал показывается лицом, а не широкой обложкой.
-   Тонкое кольцо отделяет синий круг от фона; свечения нет — цвет бренда
-   и так единственное яркое пятно на странице. */
-.log__logo {
+/* Картинка записи: одна на новость, у иконки приложения свои скруглённые
+   углы — повторяем их радиусом, чтобы рамка не резала угол дважды. */
+.log__img {
   display: flex;
   justify-content: center;
   margin: 0.2rem 0 1.5rem;
 }
 
-.log__logo img {
-  width: clamp(5.25rem, 12vw, 7rem);
+.log__img img {
+  width: clamp(5.5rem, 12vw, 7.5rem);
   height: auto;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px var(--line);
+  border-radius: 1.6rem;
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 1.2rem 3rem rgba(0, 0, 0, 0.35);
 }
 
 /* Карточка канала — ссылка целиком: иконка, название и адрес одной строкой.
