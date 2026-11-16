@@ -12,6 +12,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { LEGAL_PAGES, DOCS_DIR } from '../site/src/data/legal.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -60,7 +61,7 @@ const attr = (tag, name) => {
 
 check(/id="root">\s*<\w/.test(html), 'index.html содержит разметку до запуска скриптов');
 check(html.includes('смотрится'), 'заголовок героя есть в статическом HTML');
-for (const heading of ['>Каталог<', '>Что внутри<', '>Вопросы<']) {
+for (const heading of ['>Каталог<', '>Вопросы<']) {
   check(html.includes(heading), `в HTML есть заголовок ${heading.slice(1, -1)}`);
 }
 for (const question of [
@@ -155,7 +156,7 @@ const pictures = (html.match(/<picture[ >]/gi) ?? []).length;
 const avifSources = (html.match(/srcset="\.\/[^"]+\.avif"/gi) ?? []).length;
 check(pictures > 0 && pictures === avifSources, `у всех <picture> есть AVIF-источник (${pictures}/${avifSources})`);
 
-for (const pair of ['screens/title', 'screens/home', 'screens/search']) {
+for (const pair of ['screens/title', 'screens/home']) {
   check(files.has(`${pair}.avif`) && files.has(`${pair}.webp`), `пара ${pair} — AVIF + WebP`);
 }
 
@@ -206,18 +207,11 @@ check(fonts.some((name) => name.includes('cyrillic')), 'в наборе есть
 
 /* ------------------------------------------------------- документы */
 
-const DOC_SLUGS = [
-  'terms',
-  'privacy',
-  'consent',
-  'consent-dissemination',
-  'rightsholders',
-  'profile-delete',
-];
+const DOC_SLUGS = LEGAL_PAGES.map((doc) => doc.slug);
 const docPages = [];
 for (const slug of DOC_SLUGS) {
   try {
-    docPages.push(await fs.readFile(path.join(DIST, `${slug}.html`), 'utf8'));
+    docPages.push(await fs.readFile(path.join(DIST, DOCS_DIR, `${slug}.html`), 'utf8'));
   } catch {
     docPages.push('');
   }
@@ -233,8 +227,16 @@ check(
   `страницы документов предрендерены (${docPages.filter(docOk).length}/${DOC_SLUGS.length})`,
 );
 check(
-  DOC_SLUGS.every((slug) => html.includes(`href="./${slug}"`)),
+  DOC_SLUGS.every((slug) => html.includes(`href="./${DOCS_DIR}/${slug}"`)),
   'футер ссылается на каждый документ',
+);
+check(
+  docPages.every((page) => page.includes('="../../assets/')),
+  'документы берут бандл через ../../',
+);
+check(
+  DOC_SLUGS.every((slug) => !files.has(`${slug}.html`)),
+  'старых корневых адресов документов нет',
 );
 check(!docPages.some((page) => page.includes('смотрится просто')), 'документы не несут заголовок героя');
 

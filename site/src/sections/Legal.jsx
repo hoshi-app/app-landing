@@ -8,16 +8,22 @@ import { DOCS, DOC_CONTACT, legalHref } from '../data/legal';
  * Разметка одна на все шесть документов — различается только содержимое
  * data/legal.js. Оглавление собирается из разделов, ссылки на соседние
  * документы — из `related`, контакты берутся из одного места.
+ *
+ * Документ лежит на /faq/docs/<slug>, двумя уровнями глубже корня, поэтому
+ * всё «наверх» — к логотипу, на главную и к соседним документам — считается
+ * от ROOT.
  */
+const ROOT = '../../';
+
 export default function Legal({ doc }) {
   return (
     <>
       <header className="doc__bar">
         <div className="shell doc__row">
-          <a href="./" aria-label="hoshi — на главную">
-            <img src="./logo.svg" width="110" height="20" alt="hoshi" />
+          <a href={ROOT} aria-label="hoshi — на главную">
+            <img src={`${ROOT}logo.svg`} width="110" height="20" alt="hoshi" />
           </a>
-          <a className="doc__back" href="./">
+          <a className="doc__back" href={ROOT}>
             <Icon name="chevron" className="i doc__back-icon" />
             На главную
           </a>
@@ -82,7 +88,7 @@ export default function Legal({ doc }) {
             <ul>
               {doc.related.map((slug) => (
                 <li key={slug}>
-                  <a href={legalHref(slug)}>{DOCS[slug].title}</a>
+                  <a href={legalHref(slug, ROOT)}>{DOCS[slug].title}</a>
                 </li>
               ))}
             </ul>
@@ -90,7 +96,7 @@ export default function Legal({ doc }) {
         </div>
       </main>
 
-      <Footer />
+      <Footer base={ROOT} />
     </>
   );
 }

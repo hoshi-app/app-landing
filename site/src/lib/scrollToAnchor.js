@@ -15,7 +15,10 @@ export function scrollToAnchor(hash) {
   if (!target) return false;
 
   const header = document.querySelector('.head');
-  const offset = (header?.getBoundingClientRect().height ?? 0) + 8;
+  /* На широком экране шапка липкая и закрывает верх — отступаем на её высоту.
+     На телефоне она просто стоит в потоке и уезжает, поэтому отступ ей не нужен. */
+  const sticky = header ? getComputedStyle(header).position === 'sticky' : false;
+  const offset = sticky ? header.getBoundingClientRect().height + 8 : 8;
   const from = window.scrollY;
   const max = document.documentElement.scrollHeight - window.innerHeight;
   const to = Math.max(0, Math.min(target.getBoundingClientRect().top + from - offset, max));

@@ -25,6 +25,7 @@
   z-index: 1;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
   height: var(--head);
 }
@@ -35,38 +36,86 @@
 }
 
 /* Навигация стоит ровно по центру окна, а не по центру свободного места
-   между логотипом и краем: позиционируем абсолютно от середины шапки. */
+   между логотипом и краем: на широком экране позиционируем абсолютно от
+   середины шапки. */
 .head__nav {
-  display: none;
-  position: absolute;
-  left: 50%;
-  top: 0;
-  height: var(--head);
+  display: flex;
   align-items: center;
-  transform: translateX(-50%);
+  gap: 0.25rem;
 }
 
-/* статический фолбэк навигации до запуска скриптов */
+/* Гоу-виджет — только там, где навбар вообще есть: на телефоне вместо него
+   обычные ссылки. */
+.head__nav .gooey-nav {
+  display: none;
+}
+
+/* Меню на телефоне: те же пункты, но просто ссылками в строке с логотипом.
+   Сюда же попадает статический фолбэк до запуска скриптов. */
 .head__plain {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.1rem;
 }
 
 .head__plain a {
   display: inline-block;
-  padding: 0.45rem 0.7rem;
+  padding: 0.4rem 0.55rem;
   border-radius: 999px;
   color: var(--mute);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
 }
 
-.head__plain a:hover {
+.head__plain a:hover,
+.head__plain a[aria-current='true'] {
   color: var(--ink);
+}
+
+.head__plain a[aria-current='true'] {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 899px) {
+  /* Лого и меню на телефоне — отдельный блок в потоке страницы, а не липкая
+     полоса: он уезжает вместе с вуалью, заголовок ничем не перекрыт. */
+  .head {
+    position: static;
+  }
+
+  /* Шапка больше не висит над якорем, ей хватает воздуха строки. */
+  html {
+    scroll-padding-top: 1.25rem;
+  }
+
+  :where(section[id]) {
+    scroll-margin-top: 1.25rem;
+  }
+}
+
+@media (max-width: 359px) {
+  .head__plain a {
+    padding-inline: 0.35rem;
+    font-size: 0.78rem;
+  }
 }
 
 @media (min-width: 900px) {
   .head__nav {
-    display: flex;
+    position: absolute;
+    left: 50%;
+    top: 0;
+    height: var(--head);
+    transform: translateX(-50%);
+  }
+
+  .head__nav .gooey-nav {
+    display: inline-flex;
+  }
+
+  /* Пока гоу-виджета нет (предрендер, отключённые скрипты), меню — обычные
+     ссылки: до гидратации они стоят на том же месте, где встанет виджет. */
+  .head__nav:has(.gooey-nav) .head__plain {
+    display: none;
   }
 
   .head__logo img {
@@ -473,91 +522,6 @@ main {
   color: var(--mute);
   font-size: clamp(0.8rem, 1.1vw, 0.92rem);
   line-height: 1.4;
-}
-
-
-
-/* ---------------------------------------------------------- что внутри */
-
-.inside {
-  padding-block: var(--section);
-}
-
-
-.chapters {
-  display: grid;
-  gap: clamp(3rem, 7vw, 5.5rem);
-  margin-top: clamp(2.5rem, 5vw, 4rem);
-}
-
-.chapter {
-  display: grid;
-  gap: clamp(2rem, 5vw, 3.5rem);
-  align-items: center;
-}
-
-.chapter__copy {
-  min-width: 0;
-}
-
-.chapter h3 {
-  font-size: clamp(1.45rem, 2.6vw, 2rem);
-  line-height: 1.1;
-}
-
-.chapter__device {
-  display: flex;
-  justify-content: center;
-}
-
-.chapter__device .phone {
-  --w: clamp(10.5rem, 42vw, 15rem);
-}
-
-.features {
-  margin-top: clamp(1.5rem, 3vw, 2rem);
-  border-top: 1px solid var(--line);
-}
-
-.feature {
-  display: grid;
-  grid-template-columns: 1.3rem minmax(0, 1fr);
-  gap: 0.9rem;
-  padding-block: 1rem;
-  border-bottom: 1px solid var(--line);
-}
-
-.feature .i {
-  margin-top: 0.15rem;
-  color: var(--accent);
-  opacity: 0.9;
-}
-
-.feature h4 {
-  font-size: 0.95rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.feature p {
-  margin-top: 0.25rem;
-  color: var(--mute);
-  font-size: 0.9rem;
-  line-height: 1.55;
-}
-
-@media (min-width: 980px) {
-  .chapter {
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.78fr);
-  }
-
-  .chapter:nth-child(even) .chapter__copy {
-    order: 2;
-  }
-
-  .chapter:nth-child(even) .chapter__device {
-    order: 1;
-  }
 }
 
 /* -------------------------------------------------------------- вопросы */

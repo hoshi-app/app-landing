@@ -3,7 +3,6 @@ import Header from './sections/Header';
 import Hero from './sections/Hero';
 import Ribbon from './sections/Ribbon';
 import Catalog from './sections/Catalog';
-import Inside from './sections/Inside';
 import Faq from './sections/Faq';
 import Footer from './sections/Footer';
 import Legal from './sections/Legal';
@@ -23,7 +22,6 @@ function Landing() {
         <Hero />
         <Ribbon />
         <Catalog />
-        <Inside />
         <Faq />
       </main>
       <Footer />

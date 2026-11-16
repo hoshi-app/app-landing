@@ -60,14 +60,21 @@ export default function Header() {
     [setActive],
   );
 
-  const onClick = useCallback((event) => {
-    const link = event.target.closest?.('a[href^="#"]');
-    if (!link) return;
-    if (scrollToAnchor(link.getAttribute('href'))) {
-      lockRef.current = performance.now() + SPY_LOCK_MS;
+  const onClick = useCallback(
+    (event) => {
+      const link = event.target.closest?.('a[href^="#"]');
+      if (!link) return;
+      const href = link.getAttribute('href');
+      if (!scrollToAnchor(href)) return;
+      /* подсветку двигаем сразу: и гоу-виджет, и обычные ссылки на телефоне
+         должны отозваться на клик, а не после того, как прокрутка доедет */
+      const index = LINKS.findIndex((item) => item.href === href);
+      if (index >= 0) onNavigate(index);
+      else lockRef.current = performance.now() + SPY_LOCK_MS;
       event.preventDefault();
-    }
-  }, []);
+    },
+    [onNavigate],
+  );
 
   return (
     <header className="head" onClick={onClick}>
@@ -97,17 +104,20 @@ export default function Header() {
         </a>
 
         <nav className="head__nav" aria-label="Разделы страницы">
-          <ClientOnly
-            fallback={
-              <ul className="head__plain">
-                {LINKS.map((link) => (
-                  <li key={link.href}>
-                    <a href={link.href}>{link.label}</a>
-                  </li>
-                ))}
-              </ul>
-            }
-          >
+          {/* Телефоны и планшеты: гоу-виджет там прячется, поэтому меню — обычные
+              ссылки в той же строке, что и лого. aria-current держит подсветку
+              текущего раздела и до гидратации. */}
+          <ul className="head__plain">
+            {LINKS.map((link, index) => (
+              <li key={link.href}>
+                <a href={link.href} aria-current={active === index ? 'true' : undefined}>
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          <ClientOnly>
             <GooeyNav
               items={LINKS}
               activeIndex={active}

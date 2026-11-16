@@ -2,13 +2,13 @@ import { Icon } from '../components/Icons';
 import { TELEGRAM } from '../data/landing';
 import { DOCS, LEGAL_ORDER, legalHref } from '../data/legal';
 
-export default function Footer() {
+export default function Footer({ base = './' }) {
   return (
     <footer className="foot">
       <div className="shell">
         <div className="foot__top">
           <div className="foot__brand">
-            <img src="./logo.svg" width="110" height="20" alt="hoshi" />
+            <img src={`${base}logo.svg`} width="110" height="20" alt="hoshi" />
             <p>hoshi не хранит видео: приложение находит поток в открытых источниках.</p>
             <p>Постеры принадлежат правообладателям.</p>
           </div>
@@ -16,7 +16,7 @@ export default function Footer() {
           <div className="foot__nav">
             <nav aria-label="Документы">
               {LEGAL_ORDER.map((slug) => (
-                <a key={slug} href={legalHref(slug)}>
+                <a key={slug} href={legalHref(slug, base)}>
                   {DOCS[slug].nav}
                 </a>
               ))}

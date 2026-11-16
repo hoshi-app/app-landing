@@ -33,7 +33,6 @@ const STOPS = [
   ['hero', '#top'],
   ['ribbon', '.ribbon'],
   ['catalog', '#catalog'],
-  ['inside', '#inside'],
   ['faq', '#faq'],
   ['footer', 'footer'],
 ];
@@ -259,7 +258,15 @@ async function interactions(page) {
   return page.evaluate(async () => {
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const jump = (top) => window.scrollTo({ top, behavior: 'instant' });
-    const activeItem = () => document.querySelector('.gooey-nav__item[data-active]')?.textContent?.trim() ?? null;
+    /* На широком экране подсветку показывает гоу-виджет, на телефоне — обычные
+       ссылки в шапке (aria-current). Берём тот, что реально виден. */
+    const activeItem = () => {
+      const plain = [...document.querySelectorAll('.head__plain a')].find(
+        (node) => node.offsetParent && node.getAttribute('aria-current') === 'true',
+      );
+      if (plain) return plain.textContent.trim();
+      return document.querySelector('.gooey-nav__item[data-active]')?.textContent?.trim() ?? null;
+    };
 
     // 1. лента живёт только пока в кадре — сначала доводим её до экрана
     const catalog = document.querySelector('#catalog');
