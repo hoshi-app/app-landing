@@ -31,7 +31,9 @@ function changelogData() {
       if (moduleId !== resolvedId) return null;
       const { entries, files } = await loadChangelog();
       for (const file of files) this.addWatchFile(file);
-      return `export default ${JSON.stringify(entries)};`;
+      /* blocks нужны только сборке (export.json) — в браузер их не отправляем:
+         страница рисует уже готовый html. */
+      return `export default ${JSON.stringify(entries.map(({ blocks, ...entry }) => entry))};`;
     },
     handleHotUpdate(ctx) {
       if (!/[\\/]site[\\/]src[\\/]data[\\/]changelog[\\/][^\\/]+\.md$/.test(ctx.file)) return;

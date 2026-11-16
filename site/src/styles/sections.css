@@ -270,6 +270,18 @@ main {
   filter: brightness(1.12);
 }
 
+/* Вторичная кнопка: без заливки, чтобы акцент на странице остался один. */
+.button--ghost {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.button--ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  filter: none;
+}
+
 .hero__note {
   margin-top: 1.1rem;
   color: var(--dim);
@@ -839,7 +851,8 @@ main.doc {
   margin-top: 0.8rem;
 }
 
-.doc__section li {
+/* Точка-маркер только у маркированного списка: у <ol> в новости свои цифры. */
+.doc__section ul > li {
   position: relative;
   padding-left: 1.15rem;
   color: var(--body);
@@ -847,7 +860,7 @@ main.doc {
   line-height: 1.66;
 }
 
-.doc__section li::before {
+.doc__section ul > li::before {
   content: '';
   position: absolute;
   left: 0;
@@ -974,74 +987,123 @@ main.doc {
   height: auto;
 }
 
-/* Карточка канала — ссылка целиком: иконка, название и адрес одной строкой.
-   Высота не прыгает от длины приглашения: адрес обрезается многоточием. */
-.log__channel {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  margin-top: 1.5rem;
-  padding: 0.8rem 1rem;
-  border: 1px solid var(--line);
-  border-radius: 1.1rem;
-  background: var(--z9);
-  transition: border-color 0.2s, background 0.2s;
+/* Тело новости: ровно тот набор разметки, что умеет приложение. */
+.log__body {
+  margin-top: clamp(1.9rem, 3.5vw, 2.5rem);
 }
 
-.log__channel:hover {
-  border-color: var(--z6);
-  background: var(--z8);
+.log__body h2,
+.log__body h3 {
+  margin-top: 2rem;
 }
 
-.log__channel-icon {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 999px;
-  background: rgba(42, 171, 238, 0.14);
-  color: #2aabee;
+.log__body h3 {
+  font-size: clamp(1.02rem, 1.6vw, 1.16rem);
 }
 
-.log__channel-icon .i {
-  width: 1.3rem;
-  height: 1.3rem;
-}
-
-.log__channel-text {
-  display: grid;
-  gap: 0.15rem;
-  min-width: 0;
-}
-
-.log__channel-name {
-  color: var(--ink);
+.log__body p {
+  margin-top: 0.75rem;
+  color: var(--body);
   font-size: 0.95rem;
-  font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.72;
 }
 
-.log__channel-handle {
-  overflow: hidden;
-  color: var(--dim);
-  font-family: var(--mono);
-  font-size: 0.76rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.log__channel-arrow {
-  width: 1.1rem;
-  height: 1.1rem;
-  margin-left: auto;
-  color: var(--mute);
-  transition: color 0.2s, transform 0.2s;
-}
-
-.log__channel:hover .log__channel-arrow {
+.log__body strong {
   color: var(--ink);
-  transform: translate(0.1rem, -0.1rem);
+  font-weight: 700;
+}
+
+.log__body em {
+  font-style: italic;
+}
+
+.log__body del {
+  color: var(--dim);
+}
+
+.log__body code {
+  padding: 0.12em 0.35em;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: var(--z9);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.86em;
+}
+
+.log__body a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--z6);
+  text-underline-offset: 0.2em;
+  transition: color 0.2s, text-decoration-color 0.2s;
+}
+
+.log__body a:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+.log__body ul,
+.log__body ol {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+  color: var(--body);
+  font-size: 0.95rem;
+  line-height: 1.66;
+}
+
+.log__body ul > li {
+  position: relative;
+  padding-left: 1.15rem;
+}
+
+.log__body ul > li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.66em;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0.7;
+}
+
+.log__body ol {
+  padding-left: 1.4rem;
+  list-style: decimal;
+}
+
+.log__body ol > li::marker {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.log__body blockquote {
+  margin-top: 1rem;
+  padding: 0.1rem 0 0.1rem 1rem;
+  border-left: 2px solid var(--accent);
+}
+
+.log__body blockquote p {
+  margin-top: 0;
+  color: var(--mute);
+}
+
+.log__body hr {
+  margin: 2rem 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.log__body img {
+  display: block;
+  width: 100%;
+  max-width: 34rem;
+  height: auto;
+  margin-top: 1.2rem;
 }
 
 .log__note {
@@ -1052,8 +1114,23 @@ main.doc {
   letter-spacing: 0.04em;
 }
 
-.log__cta {
+/* Кнопки записи: одна заливка акцентом, остальные контуром, столбиком. */
+.log__ctas {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.7rem;
   margin-top: 1.6rem;
+}
+
+@media (max-width: 560px) {
+  .log__ctas {
+    align-items: stretch;
+  }
+
+  .log__ctas .button {
+    justify-content: center;
+  }
 }
 
 /* -------------------------------------------------------------- движение */

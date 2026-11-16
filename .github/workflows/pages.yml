@@ -33,6 +33,8 @@ jobs:
 
       - run: npm run build
 
+      - run: npm test
+
       - run: npm run verify
 
       - name: Publish dist to pages

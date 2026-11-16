@@ -13,8 +13,6 @@ import { CHANGELOG, LIST_PAGE, changelogHref, dateLabel } from '../data/changelo
  */
 const ROOT = '../../';
 
-const isExternal = (url) => /^https?:/i.test(url);
-
 /** Картинка записи: одна на новость, размеры уже прочитаны из файла на сборке. */
 function Img({ img }) {
   if (!img) return null;
@@ -31,44 +29,35 @@ function Img({ img }) {
   );
 }
 
-/**
- * Карточка канала: адрес, куда идти, и сама ссылка одной строкой. Ссылка
- * внешняя, поэтому и она, и стрелка открываются в новой вкладке.
- */
-function Channel({ channel }) {
-  if (!channel) return null;
-  return (
-    <a className="log__channel" href={channel.url} target="_blank" rel="noopener noreferrer">
-      <span className="log__channel-icon">
-        <Icon name="telegram" />
-      </span>
-      <span className="log__channel-text">
-        <span className="log__channel-name">{channel.label}</span>
-        <span className="log__channel-handle">{channel.handle}</span>
-      </span>
-      <Icon name="arrow" className="log__channel-arrow" />
-    </a>
-  );
-}
-
-/** Текст записи: markdown уже собран в HTML на сборке, стили — общие .doc__section. */
+/** Текст записи: HTML собран на сборке, пустого блока в разметке нет (тело необязательно). */
 function Body({ html }) {
-  return <section className="doc__section" dangerouslySetInnerHTML={{ __html: html }} />;
+  if (!html.trim()) return null;
+  return <section className="doc__section log__body" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-/** Кнопка действия: единственная заливка акцентом на странице. */
-function Cta({ cta }) {
-  if (!cta) return null;
-  const external = isExternal(cta.url);
+/**
+ * Кнопки действия: строк во front-matter столько же, сколько кнопок. На сайте
+ * рисуются только https-кнопки; `app:/…` открывается внутри приложения и здесь
+ * не показывается. Первая видимая — заливкой, остальные контуром: акцент один.
+ */
+function Buttons({ buttons }) {
+  const links = (buttons ?? []).filter((button) => button.href);
+  if (!links.length) return null;
   return (
-    <a
-      className="button log__cta"
-      href={cta.url}
-      {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-    >
-      {cta.label}
-      {external ? <Icon name="arrow" className="i" /> : null}
-    </a>
+    <p className="log__ctas">
+      {links.map((button, index) => (
+        <a
+          key={`${button.href} ${index}`}
+          className={index === 0 ? 'button' : 'button button--ghost'}
+          href={button.href}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {button.label}
+          <Icon name="arrow" className="i" />
+        </a>
+      ))}
+    </p>
   );
 }
 
@@ -133,9 +122,8 @@ export default function Changelog({ page }) {
             </p>
             <p className="doc__intro">{page.summary}</p>
 
-            <Channel channel={page.channel} />
             <Body html={page.html} />
-            <Cta cta={page.cta} />
+            <Buttons buttons={page.buttons} />
             {page.note ? <p className="log__note">{page.note}</p> : null}
           </article>
 

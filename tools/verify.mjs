@@ -253,6 +253,10 @@ check(logSlugs.length > 0, 'в ленте есть записи');
 check(new Set(logSlugs).size === logSlugs.length, 'slug записей не повторяются');
 check(logSlugs.every((slug) => /^[a-z0-9-]+$/.test(slug)), 'slug записей — латиница, цифры и дефис');
 check(
+  new Set(CHANGELOG.map((entry) => `${entry.date} ${entry.title}`)).size === CHANGELOG.length,
+  'нет двух новостей с одной датой и заголовком',
+);
+check(
   CHANGELOG.every((entry) => /^\d{4}-\d{2}-\d{2}$/.test(entry.date)),
   'даты записей в формате YYYY-MM-DD',
 );
@@ -265,13 +269,45 @@ check(
   'у каждой записи есть заголовок, лид и тег',
 );
 check(
-  CHANGELOG.every((entry) => typeof entry.html === 'string' && entry.html.trim().length > 0),
-  'у каждой записи есть текст',
+  CHANGELOG.every((entry) => (entry.blocks.length === 0) === (entry.html.trim() === '')),
+  'тело необязательно: html и блоки появляются вместе',
 );
 check(
-  CHANGELOG.every((entry) => !entry.cta || /^https:\/\//.test(entry.cta.url)),
-  'кнопки записей ведут на https',
+  CHANGELOG.every((entry) =>
+    entry.blocks.every((block) =>
+      block.type === 'img' ? block.width > 0 && block.height > 0 && Boolean(block.alt) : true,
+    ),
+  ),
+  'у картинок тела есть размеры и alt',
 );
+check(
+  CHANGELOG.every(
+    (entry) =>
+      Array.isArray(entry.buttons) &&
+      entry.buttons.every(
+        (button) =>
+          Boolean(button.label) &&
+          ((typeof button.href === 'string' && /^https:\/\//.test(button.href)) ||
+            typeof button.app === 'string' && button.app.startsWith('/')),
+      ),
+  ),
+  'кнопки записей: https-ссылка или путь приложения',
+);
+check(
+  CHANGELOG.every(
+    (entry) => Array.isArray(entry.platforms) && entry.platforms.every((item) => item === 'ios' || item === 'android'),
+  ),
+  'platform — только ios/android',
+);
+check(
+  CHANGELOG.every(
+    (entry) =>
+      entry.appVersion === null ||
+      /^(\d+\.\d+\.\d+|\d+\.\d+\.\d+\+|-\d+\.\d+\.\d+|\d+\.\d+\.\d+-\d+\.\d+\.\d+)$/.test(entry.appVersion),
+  ),
+  'app-version — 1.2.9, 1.2.9+, -1.2.9 или 1.2.9-1.3.4',
+);
+check(CHANGELOG.every((entry) => typeof entry.close === 'boolean'), 'close — true или false');
 check(
   CHANGELOG.every(
     (entry) =>
@@ -279,14 +315,6 @@ check(
       (Boolean(entry.img.src) && Boolean(entry.img.alt) && entry.img.width > 0 && entry.img.height > 0),
   ),
   'у картинок записей есть src, alt и размеры',
-);
-check(
-  CHANGELOG.every(
-    (entry) =>
-      !entry.channel ||
-      (/^https:\/\//.test(entry.channel.url) && Boolean(entry.channel.label) && Boolean(entry.channel.handle)),
-  ),
-  'у карточек каналов есть подпись, адрес и https-ссылка',
 );
 check(
   changelogForPath('/faq/changelog/', CHANGELOG)?.list === true &&
@@ -340,19 +368,44 @@ check(
 const entryPages = await Promise.all(
   CHANGELOG.map((entry) => readDist(`${CHANGELOG_DIR}/${entry.slug}.html`)),
 );
-const entryOk = (entry, page) =>
-  /id="root">\s*<\w/.test(page) &&
-  (page.match(/<h1[\s>]/g) ?? []).length === 1 &&
-  page.includes(`<title>${entry.title} — hoshi</title>`) &&
-  page.includes('class="doc__back log__back"') &&
-  page.indexOf('doc__back') > page.indexOf('<main') &&
-  page.indexOf('log__back') < page.indexOf('<h1') &&
-  page.includes('href="../../faq/changelog/"') &&
-  !page.includes('href="../"') &&
-  page.includes('="../../assets/') &&
-  page.includes(entry.html.trim()) &&
-  (!entry.img || page.includes(`src="../../${entry.img.src}"`)) &&
-  (!entry.channel || page.includes(`href="${entry.channel.url}"`));
+/** Какие кнопки записи видит сайт: app:/… открываются только в приложении. */
+const siteButtons = (entry) => entry.buttons.filter((button) => button.href);
+
+const entryOk = (entry, page) => {
+  const buttons = siteButtons(entry);
+  const bodyImages = entry.blocks.filter((block) => block.type === 'img');
+  return (
+    /id="root">\s*<\w/.test(page) &&
+    (page.match(/<h1[\s>]/g) ?? []).length === 1 &&
+    page.includes(`<title>${entry.title} — hoshi</title>`) &&
+    page.includes('class="doc__back log__back"') &&
+    page.indexOf('doc__back') > page.indexOf('<main') &&
+    page.indexOf('log__back') < page.indexOf('<h1') &&
+    page.includes('href="../../faq/changelog/"') &&
+    !page.includes('href="../"') &&
+    page.includes('="../../assets/') &&
+    /* Тело: либо его нет вовсе, либо оно стоит в .log__body. */
+    (entry.html.trim()
+      ? page.includes('class="doc__section log__body"') && page.includes(entry.html.trim())
+      : !page.includes('class="doc__section log__body"')) &&
+    (!entry.img || page.includes(`src="../../${entry.img.src}"`)) &&
+    /* Кнопки: только https, первая заливкой, остальные контуром. */
+    (buttons.length === 0
+      ? !page.includes('class="log__ctas"')
+      : buttons.every((button) => page.includes(`href="${button.href}"`)) &&
+        (page.match(/class="button"/g) ?? []).length >= 1 &&
+        (page.match(/class="button button--ghost"/g) ?? []).length === buttons.length - 1) &&
+    /* Кнопки приложения и схема не должны попадать на страницу. */
+    !page.includes('app:/') &&
+    /* Картинки тела: от корня, с размерами, файл лежит в dist. */
+    bodyImages.every(
+      (image) =>
+        page.includes(`src="../../${image.src}"`) &&
+        page.includes(`width="${image.width}" height="${image.height}"`) &&
+        files.has(image.src),
+    )
+  );
+};
 check(
   CHANGELOG.every((entry, index) => entryOk(entry, entryPages[index])),
   `страницы записей предрендерены (${entryPages.filter((page, index) => entryOk(CHANGELOG[index], page)).length}/${CHANGELOG.length})`,
@@ -396,8 +449,52 @@ try {
 }
 check(Boolean(feed), 'фид ленты парсится как JSON');
 
-/** В фиде только маршрут: всё остальное приложение берёт из <slug>/export.md. */
-const ROUTER_KEYS = ['date', 'md', 'slug', 'summary', 'tag', 'title', 'url'].join(',');
+/** В фиде только маршрут: контент приложение берёт из <slug>/export.json. */
+const ROUTER_KEYS = ['slug', 'date', 'tag', 'title', 'summary', 'url', 'content'];
+const OPTIONAL_KEYS = new Set(['platforms', 'appVersion']);
+const feedKeysOk = (entry) => {
+  const keys = Object.keys(entry);
+  return ROUTER_KEYS.every((key) => key in entry) && keys.every((key) => ROUTER_KEYS.includes(key) || OPTIONAL_KEYS.has(key));
+};
+
+const exportJson = await Promise.all(
+  CHANGELOG.map(async (entry) => {
+    try {
+      return JSON.parse(await readDist(`${CHANGELOG_DIR}/${entry.slug}/export.json`));
+    } catch {
+      return null;
+    }
+  }),
+);
+check(
+  exportJson.every((content) => content && content.v === 1),
+  'export.json есть у каждой записи и имеет v: 1',
+);
+check(
+  exportJson.every(
+    (content) =>
+      Array.isArray(content.blocks) &&
+      content.blocks.every((block) =>
+        block.type === 'img'
+          ? /^https:\/\/.+/.test(block.src) && block.width > 0 && block.height > 0 && Boolean(block.alt)
+          : true,
+      ),
+  ),
+  'картинки тела в export.json абсолютные, с размерами и alt',
+);
+check(
+  exportJson.every((content, index) => {
+    const entry = CHANGELOG[index];
+    return (
+      content.close === entry.close &&
+      Boolean(content.note === entry.note) &&
+      JSON.stringify(content.buttons) === JSON.stringify(entry.buttons) &&
+      content.blocks.length === entry.blocks.length &&
+      (content.img === null) === (entry.img === null)
+    );
+  }),
+  'export.json повторяет шапку, кнопки и блоки записи',
+);
 
 if (feed) {
   check(/^[0-9a-f]{12}$/.test(String(feed.version)), 'version фида — 12 hex-символов');
@@ -408,21 +505,31 @@ if (feed) {
     `в фиде ${feed.entries?.length ?? 0} записей (ожидалось ${CHANGELOG.length})`,
   );
   check(
-    (feed.entries ?? []).every((entry) => Object.keys(entry).sort().join(',') === ROUTER_KEYS),
-    'в фиде только поля-маршруты: slug, date, tag, title, summary, url, md',
+    (feed.entries ?? []).every(feedKeysOk),
+    'в фиде только маршрут: slug, date, tag, title, summary, url, content (+platforms/appVersion)',
   );
   check(
     (feed.entries ?? []).every(
       (entry) =>
         entry.url === `${feed.site}/${CHANGELOG_DIR}/${entry.slug}` &&
-        entry.md === `${feed.site}/${CHANGELOG_DIR}/${entry.slug}/export.md` &&
-        files.has(`${CHANGELOG_DIR}/${entry.slug}/export.md`),
+        entry.content === `${feed.site}/${CHANGELOG_DIR}/${entry.slug}/export.json` &&
+        files.has(`${CHANGELOG_DIR}/${entry.slug}/export.json`),
     ),
-    'url и md записей абсолютные и указывают на собранные файлы',
+    'url и content записей абсолютные и указывают на собранные файлы',
   );
   check(
     (feed.entries ?? []).every((entry) => entry.title && entry.summary && entry.tag && entry.date),
     'у записей в фиде есть дата, тег, заголовок и лид',
+  );
+  check(
+    (feed.entries ?? []).every((entry) => {
+      const source = CHANGELOG.find((item) => item.slug === entry.slug);
+      return (
+        JSON.stringify(entry.platforms ?? []) === JSON.stringify(source?.platforms ?? []) &&
+        (entry.appVersion ?? null) === (source?.appVersion ?? null)
+      );
+    }),
+    'platforms/appVersion в фиде совпадают с новостью',
   );
   const expectedActual = CHANGELOG.filter((entry) => entry.actual)
     .sort((a, b) => a.date.localeCompare(b.date) || a.slug.localeCompare(b.slug))
@@ -432,13 +539,10 @@ if (feed) {
       feed.actual.map((entry) => entry.slug).join(',') === expectedActual.join(','),
     'actual — актуальные записи, от старых к новым',
   );
+  check((feed.actual ?? []).every(feedKeysOk), 'в actual только поля-маршруты');
   check(
-    (feed.actual ?? []).every((entry) => Object.keys(entry).sort().join(',') === ROUTER_KEYS),
-    'в actual только поля-маршруты',
-  );
-  check(
-    !('promo' in feed) && !('until' in feed) && !('body' in feed),
-    'в фиде нет promo/until/body',
+    (feed.entries ?? []).every((entry) => !('md' in entry) && !('body' in entry) && !('promo' in entry)),
+    'в фиде нет md/body/promo: контент — в export.json',
   );
   check(!/<[a-z][^>]*>/i.test(JSON.stringify(feed)), 'в фиде нет HTML');
 }

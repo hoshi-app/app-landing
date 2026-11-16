@@ -141,22 +141,43 @@ if (process.env.PRERENDER === '0') {
     const page = docHead(template, logPage.head);
     await fs.writeFile(path.join(logDir, logPage.file), fill(page, render(logPage.url)), 'utf8');
 
-    /* Копия исходника рядом со страницей: /faq/changelog/<slug>/export.md.
-       Это тот же файл, что лежит в site/src/data/changelog: приложение рисует
-       новость по нему, а не по HTML-странице. */
+    /* Две копии новости рядом со страницей:
+       export.md — тот же исходник байт в байт (для людей и дебага);
+       export.json — то же тело, но блоками и с абсолютными URL (это рисует
+       приложение; markdown оно не разбирает). Картинки в JSON — абсолютные:
+       приложению не нужно склеивать адреса самому. */
     if (logPage.entry) {
-      const exportDir = path.join(logDir, logPage.entry.slug);
+      const entry = logPage.entry;
+      const exportDir = path.join(logDir, entry.slug);
       await fs.mkdir(exportDir, { recursive: true });
-      await fs.copyFile(
-        path.join(MD_DIR, logPage.entry.source),
-        path.join(exportDir, 'export.md'),
+      await fs.copyFile(path.join(MD_DIR, entry.source), path.join(exportDir, 'export.md'));
+
+      const content = {
+        v: 1,
+        title: entry.title,
+        summary: entry.summary,
+        img: entry.img ? { ...entry.img, src: `${SITE}/${entry.img.src}` } : null,
+        buttons: entry.buttons,
+        close: entry.close,
+        note: entry.note,
+        blocks: entry.blocks.map((block) =>
+          block.type === 'img' ? { ...block, src: `${SITE}/${block.src}` } : block,
+        ),
+      };
+      await fs.writeFile(
+        path.join(exportDir, 'export.json'),
+        `${JSON.stringify(content, null, 2)}\n`,
+        'utf8',
       );
     }
   }
 
   /* feed.json — маршрутизатор, а не копия страницы. В записи только то, что
      нужно списку новостей и чтобы найти саму новость: заголовок, лид, адрес
-     страницы и адрес export.md с полным текстом.
+     страницы и адрес export.json с готовым контентом.
+
+     `platforms`/`appVersion` — условия показа; ключи появляются только когда
+     новость ограничена, иначе фид остаётся минимальным.
 
      entries — все новости, новые сверху (основной список).
      actual  — только актуальные, от старых к новым: приложение берёт последнюю
@@ -172,7 +193,9 @@ if (process.env.PRERENDER === '0') {
     title: entry.title,
     summary: entry.summary,
     url: `${SITE}/${CHANGELOG_DIR}/${entry.slug}`,
-    md: `${SITE}/${CHANGELOG_DIR}/${entry.slug}/export.md`,
+    content: `${SITE}/${CHANGELOG_DIR}/${entry.slug}/export.json`,
+    ...(entry.platforms.length ? { platforms: entry.platforms } : {}),
+    ...(entry.appVersion ? { appVersion: entry.appVersion } : {}),
   });
 
   const actual = CHANGELOG.filter((entry) => entry.actual)

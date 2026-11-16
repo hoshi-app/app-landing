@@ -9,6 +9,7 @@
     "build": "node tools/build.mjs",
     "deploy": "node tools/deploy.mjs",
     "preview": "node tools/serve.mjs dist 4174",
+    "test": "node tools/check-changelog.mjs",
     "verify": "node tools/verify.mjs",
     "shoot": "node tools/shoot.mjs",
     "og": "node tools/og.mjs",

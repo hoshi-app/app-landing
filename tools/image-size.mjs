@@ -3,7 +3,8 @@
  *
  * Новостям не нужно вручную писать width/height: размеры читаются из самого
  * файла на сборке. Поддержаны форматы, которые лежат в site/public: SVG, PNG,
- * JPEG и WebP. Неизвестный формат — null, и тогда сборка честно падает.
+ * JPEG, WebP и GIF (включая анимированный — размеры в его заголовке). Неизвестный
+ * формат — null, и тогда сборка честно падает.
  */
 
 const svgSize = (text) => {
@@ -72,6 +73,14 @@ export function webpSize(buffer) {
   return null;
 }
 
+/** GIF87a/GIF89a: логический экран — 16-битные little-endian по смещениям 6 и 8. */
+const gifSize = (buffer) => {
+  if (buffer.length < 10) return null;
+  const signature = buffer.toString('ascii', 0, 6);
+  if (signature !== 'GIF87a' && signature !== 'GIF89a') return null;
+  return { width: buffer.readUInt16LE(6), height: buffer.readUInt16LE(8) };
+};
+
 /** Размеры картинки по её байтам и имени (расширение важнее магии байтов). */
 export function imageSize(buffer, name) {
   const ext = String(name).toLowerCase().split('.').pop();
@@ -79,5 +88,6 @@ export function imageSize(buffer, name) {
   if (ext === 'png') return pngSize(buffer);
   if (ext === 'jpg' || ext === 'jpeg') return jpegSize(buffer);
   if (ext === 'webp') return webpSize(buffer);
+  if (ext === 'gif') return gifSize(buffer);
   return null;
 }
