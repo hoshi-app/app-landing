@@ -151,10 +151,12 @@ if (process.env.PRERENDER === '0') {
     await fs.writeFile(path.join(logDir, logPage.file), fill(page, render(logPage.url)), 'utf8');
   }
 
-  /* Фид для приложения собирается из тех же записей, что и страницы.
-     version — хэш содержимого: приложение кэширует его и показывает рекламный
-     экран один раз, а меняется он только при правке ленты (даты сборки в хэше
-     нет, поэтому повторная сборка даёт тот же файл). */
+  /* Фид для приложения собирается из тех же записей, что и страницы, и несёт
+     всю запись целиком: знак, текст, карточку канала и подпись. Приложению не
+     нужно открывать страницу ради содержания, а «Подробнее» остаётся ссылкой
+     на неё. `version` — хэш содержимого: приложение кэширует его и показывает
+     новость один раз, а меняется он только при правке ленты (даты сборки в
+     хэше нет, поэтому повторная сборка даёт тот же файл). */
   const feedEntry = (entry) => ({
     slug: entry.slug,
     date: entry.date,
@@ -162,6 +164,14 @@ if (process.env.PRERENDER === '0') {
     title: entry.title,
     summary: entry.summary,
     url: `${SITE}/${CHANGELOG_DIR}/${entry.slug}`,
+    logo: entry.logo
+      ? {
+          url: `${SITE}/${entry.logo.src}`,
+          width: entry.logo.width,
+          height: entry.logo.height,
+          alt: entry.logo.alt,
+        }
+      : null,
     cover: entry.cover
       ? {
           url: `${SITE}/${entry.cover.src}`,
@@ -170,6 +180,15 @@ if (process.env.PRERENDER === '0') {
           alt: entry.cover.alt,
         }
       : null,
+    channel: entry.channel
+      ? {
+          label: entry.channel.label,
+          handle: entry.channel.handle,
+          url: entry.channel.url,
+        }
+      : null,
+    body: entry.body ?? [],
+    note: entry.note ?? null,
     cta: entry.cta ?? null,
     promo: entry.promo === true,
     until: entry.until ?? null,

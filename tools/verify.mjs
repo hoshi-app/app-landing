@@ -406,6 +406,31 @@ if (feed) {
     ),
     'обложки в фиде указывают на существующие файлы',
   );
+  check(
+    (feed.entries ?? []).every(
+      (entry) =>
+        Array.isArray(entry.body) &&
+        entry.body.length > 0 &&
+        (!entry.logo ||
+          (files.has(entry.logo.url.slice(`${feed.site}/`.length)) &&
+            Boolean(entry.logo.alt) &&
+            entry.logo.width > 0 &&
+            entry.logo.height > 0)) &&
+        (!entry.channel ||
+          (/^https:\/\//.test(entry.channel.url) &&
+            Boolean(entry.channel.label) &&
+            Boolean(entry.channel.handle))),
+    ),
+    'в фиде есть текст, знак и карточка канала',
+  );
+  check(
+    (feed.entries ?? []).every(
+      (entry) =>
+        JSON.stringify(entry.body) ===
+        JSON.stringify(CHANGELOG.find((item) => item.slug === entry.slug)?.body),
+    ),
+    'текст в фиде совпадает со страницей записи',
+  );
   for (const entry of feed.entries ?? []) {
     const cover = entry.cover;
     if (!cover || !cover.url.endsWith('.webp')) continue;
