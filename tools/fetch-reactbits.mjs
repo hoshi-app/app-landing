@@ -49,6 +49,164 @@ const PATCHES = [
       { from: '      </p>', to: '      </Tag>' },
     ],
   },
+  {
+    file: 'Backgrounds/LightRays/LightRays.jsx',
+    why: 'свет дрейфует медленно, а каждый кадр заново взводит backdrop-фильтр вуали шапки — 30 кадров в секунду вместо частоты монитора',
+    edits: [
+      {
+        from: [
+          '    let lost = false;',
+          '',
+          '    let resizePending = false;',
+        ].join('\n'),
+        to: [
+          '    let lost = false;',
+          '    /* Лучи дрейфуют медленно: 30 кадров в секунду на глаз не отличить от 60,',
+          '       а каждый нарисованный кадр заново взводит backdrop-фильтр вуали шапки —',
+          '       она лежит прямо над светом. */',
+          '    const FRAME_MS = 1000 / 30;',
+          '    let nextAllowed = 0;',
+          '',
+          '    let resizePending = false;',
+        ].join('\n'),
+      },
+      {
+        from: [
+          '    const frame = now => {',
+          '      raf = 0;',
+          '      if (resizePending) {',
+        ].join('\n'),
+        to: [
+          '    const frame = now => {',
+          '      raf = 0;',
+          '      if (now < nextAllowed) {',
+          '        if (visible && pageVisible) raf = requestAnimationFrame(frame);',
+          '        return;',
+          '      }',
+          '      nextAllowed = now + FRAME_MS;',
+          '      if (resizePending) {',
+        ].join('\n'),
+      },
+    ],
+  },
+  {
+    file: 'Animations/Noise/Noise.jsx',
+    why: 'пустой пылевой холст очищался каждый тик, а зерно дёргало кадр через background-position вместо композитного сдвига',
+    edits: [
+      {
+        from: [
+          '    const root = rootRef.current;',
+          '    const grain = grainRef.current;',
+          '    const canvas = dustRef.current;',
+          "    const ctx = canvas?.getContext('2d');",
+          '    if (!root || !grain || !canvas || !ctx) return undefined;',
+        ].join('\n'),
+        to: [
+          '    const root = rootRef.current;',
+          '    const grain = grainRef.current;',
+          '    /* Пыль и царапины не рисуются — значит, и холста нет: полнокадровый',
+          '       clearRect каждый тик всё равно помечает слой грязным и гонит пустую',
+          '       текстуру на композитор, даже когда рисовать нечего. */',
+          '    const canvas = dustRef.current;',
+          "    const ctx = canvas?.getContext('2d') ?? null;",
+          '    if (!root || !grain) return undefined;',
+        ].join('\n'),
+      },
+      {
+        from: [
+          '    const paintDust = (s, step) => {',
+          '      const dpr = Math.min(window.devicePixelRatio || 1, 2);',
+          '      ctx.setTransform(1, 0, 0, 1, 0, 0);',
+          '      ctx.clearRect(0, 0, canvas.width, canvas.height);',
+          '      if (s.dust <= 0 && s.scratches <= 0 && scratchList.length === 0) return;',
+        ].join('\n'),
+        to: [
+          '    const paintDust = (s, step) => {',
+          '      if (!ctx || !canvas) return;',
+          '      if (s.dust <= 0 && s.scratches <= 0 && scratchList.length === 0) return;',
+          '      const dpr = Math.min(window.devicePixelRatio || 1, 2);',
+          '      ctx.setTransform(1, 0, 0, 1, 0, 0);',
+          '      ctx.clearRect(0, 0, canvas.width, canvas.height);',
+        ].join('\n'),
+      },
+      {
+        from: [
+          '      width = Math.max(1, root.clientWidth);',
+          '      height = Math.max(1, root.clientHeight);',
+          '      canvas.width = Math.round(width * dpr);',
+          '      canvas.height = Math.round(height * dpr);',
+          '      paintDust(settingsRef.current, 0);',
+        ].join('\n'),
+        to: [
+          '      width = Math.max(1, root.clientWidth);',
+          '      height = Math.max(1, root.clientHeight);',
+          '      if (canvas) {',
+          '        canvas.width = Math.round(width * dpr);',
+          '        canvas.height = Math.round(height * dpr);',
+          '      }',
+          '      paintDust(settingsRef.current, 0);',
+        ].join('\n'),
+      },
+      {
+        from: [
+          '        const span = TILE * s.size;',
+          '        grain.style.backgroundPosition = `${(Math.random() * span).toFixed(1)}px ${(Math.random() * span).toFixed(1)}px`;',
+        ].join('\n'),
+        to: [
+          '        const span = TILE * s.size;',
+          '        /* Сдвиг зерна — трансформом, а не background-position: тайл повторяется,',
+          '           поэтому сдвиг на величину тайла даёт ту же картинку, но слой при этом',
+          '           не перерисовывается на всю высоту героя, а только двигается. */',
+          '        grain.style.transform = `translate3d(${(Math.random() * span).toFixed(1)}px, ${(Math.random() * span).toFixed(1)}px, 0px)`;',
+        ].join('\n'),
+      },
+      {
+        from: '      <canvas ref={dustRef} className="noise__dust" />',
+        to: [
+          '      {(settings.dust > 0 || settings.scratches > 0) && (',
+          '        <canvas ref={dustRef} className="noise__dust" />',
+          '      )}',
+        ].join('\n'),
+      },
+    ],
+  },
+  {
+    file: 'TextAnimations/CurvedLoop/CurvedLoop.jsx',
+    why: 'лента идёт 42 px/с, а SVG-текст перекладывался по всей ширине 60 раз в секунду',
+    edits: [
+      {
+        from: [
+          '    let frame = 0;',
+          '    let last = 0;',
+          '    let visible = true;',
+          '',
+          '    const tick = now => {',
+          '      frame = 0;',
+          '      if (!visible) return;',
+          '      const dt = last ? Math.min((now - last) / 1000, 0.05) : 0;',
+        ].join('\n'),
+        to: [
+          '    let frame = 0;',
+          '    let last = 0;',
+          '    let visible = true;',
+          '    /* Лента идёт 42 px/с, то есть меньше пикселя за кадр: перекладывать',
+          '       SVG-текст по всей ширине 60 раз в секунду ради этого не нужно. */',
+          '    const FRAME_MS = 1000 / 30;',
+          '    let nextAllowed = 0;',
+          '',
+          '    const tick = now => {',
+          '      frame = 0;',
+          '      if (!visible) return;',
+          '      if (now < nextAllowed) {',
+          '        frame = requestAnimationFrame(tick);',
+          '        return;',
+          '      }',
+          '      nextAllowed = now + FRAME_MS;',
+          '      const dt = last ? Math.min((now - last) / 1000, 0.05) : 0;',
+        ].join('\n'),
+      },
+    ],
+  },
 ];
 
 const fail = (message) => {

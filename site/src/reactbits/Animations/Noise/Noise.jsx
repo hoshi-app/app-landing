@@ -132,9 +132,12 @@ const Noise = ({
   useEffect(() => {
     const root = rootRef.current;
     const grain = grainRef.current;
+    /* Пыль и царапины не рисуются — значит, и холста нет: полнокадровый
+       clearRect каждый тик всё равно помечает слой грязным и гонит пустую
+       текстуру на композитор, даже когда рисовать нечего. */
     const canvas = dustRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!root || !grain || !canvas || !ctx) return undefined;
+    const ctx = canvas?.getContext('2d') ?? null;
+    if (!root || !grain) return undefined;
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     const scratchList = [];
     let raf = 0;
@@ -146,10 +149,11 @@ const Noise = ({
     let height = 1;
 
     const paintDust = (s, step) => {
+      if (!ctx || !canvas) return;
+      if (s.dust <= 0 && s.scratches <= 0 && scratchList.length === 0) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (s.dust <= 0 && s.scratches <= 0 && scratchList.length === 0) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const area = (width * height) / 400000;
 
@@ -207,8 +211,10 @@ const Noise = ({
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       width = Math.max(1, root.clientWidth);
       height = Math.max(1, root.clientHeight);
-      canvas.width = Math.round(width * dpr);
-      canvas.height = Math.round(height * dpr);
+      if (canvas) {
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+      }
       paintDust(settingsRef.current, 0);
     };
 
@@ -221,7 +227,10 @@ const Noise = ({
         const step = last ? Math.min(0.2, (now - last) / 1000) : 1 / rate;
         last = now;
         const span = TILE * s.size;
-        grain.style.backgroundPosition = `${(Math.random() * span).toFixed(1)}px ${(Math.random() * span).toFixed(1)}px`;
+        /* Сдвиг зерна — трансформом, а не background-position: тайл повторяется,
+           поэтому сдвиг на величину тайла даёт ту же картинку, но слой при этом
+           не перерисовывается на всю высоту героя, а только двигается. */
+        grain.style.transform = `translate3d(${(Math.random() * span).toFixed(1)}px, ${(Math.random() * span).toFixed(1)}px, 0px)`;
         grain.style.opacity = String(s.opacity * (1 - s.flicker * Math.random() * 0.7));
         roll = (roll + 1) % 3;
         linesRef.current?.style.setProperty('background-position', `0 ${roll}px`);
@@ -278,7 +287,9 @@ const Noise = ({
           backgroundSize: `${TILE * settings.size}px ${TILE * settings.size}px`
         }}
       />
-      <canvas ref={dustRef} className="noise__dust" />
+      {(settings.dust > 0 || settings.scratches > 0) && (
+        <canvas ref={dustRef} className="noise__dust" />
+      )}
       {scanlines > 0 && (
         <div ref={linesRef} className="noise__lines" style={{ opacity: clamp(scanlines, 0, 1), mixBlendMode: blend }} />
       )}

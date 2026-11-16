@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import BlurText from '../reactbits/TextAnimations/BlurText/BlurText';
 import LightRays from '../reactbits/Backgrounds/LightRays/LightRays';
 import Noise from '../reactbits/Animations/Noise/Noise';
@@ -16,6 +17,11 @@ const LEAD =
 
 export default function Hero() {
   const reduced = usePrefersReducedMotion();
+  /* Пока идёт вход, слова анимируются блюром и держат will-change. После входа
+     это уже просто текст: класс снимает с него и то, и другое, иначе под
+     вуалью шапки висят два десятка лишних слоёв. */
+  const [titleDone, setTitleDone] = useState(false);
+  const [leadDone, setLeadDone] = useState(false);
 
   return (
     <section className="hero" id="top" aria-label="hoshi — аниме, которое смотрится просто">
@@ -46,8 +52,10 @@ export default function Hero() {
           {!reduced && (
             <div className="hero__grain">
               {/* dust={0}: канвасные точки «как от старой плёнки» убраны,
-                  остаётся ровное зерно на тайле */}
-              <Noise opacity={0.07} size={1} fps={20} blendMode="soft-light" contrast={0.55} dust={0} flicker={0.04} />
+                  остаётся ровное зерно на тайле. fps 12, а не 20: зерно и так
+                  шумит, а каждый тик двигает слой поверх света и заставляет
+                  пересчитывать blur вуали. */}
+              <Noise opacity={0.07} size={1} fps={12} blendMode="soft-light" contrast={0.55} dust={0} flicker={0.04} />
             </div>
           )}
         </ClientOnly>
@@ -59,7 +67,7 @@ export default function Hero() {
 
           <BlurText
             as="h1"
-            className="hero__title"
+            className={`hero__title${titleDone ? ' is-settled' : ''}`}
             text={TITLE}
             animateBy="words"
             direction="top"
@@ -68,10 +76,11 @@ export default function Hero() {
             blur={9}
             distance={42}
             trigger="load"
+            onAnimationComplete={() => setTitleDone(true)}
           />
 
           <BlurText
-            className="hero__lead"
+            className={`hero__lead${leadDone ? ' is-settled' : ''}`}
             text={LEAD}
             animateBy="words"
             direction="top"
@@ -80,6 +89,7 @@ export default function Hero() {
             blur={6}
             distance={18}
             trigger="load"
+            onAnimationComplete={() => setLeadDone(true)}
           />
 
           <div className="hero__cta">

@@ -122,6 +122,14 @@ main {
   opacity: 0.85;
 }
 
+/* Зерно двигается трансформом, а не background-position: слой больше кадра на
+   размер тайла (256 px), поэтому сдвиг на [0, 256) показывает ту же картинку
+   без перерисовки всей высоты героя — двигается только композитор. */
+.hero__grain .noise__grain {
+  inset: -256px;
+  will-change: transform;
+}
+
 .hero__grid {
   display: grid;
   gap: clamp(2rem, 5vw, 3.5rem);
@@ -169,6 +177,15 @@ main {
   color: var(--mute);
   font-size: clamp(1rem, 1.35vw, 1.12rem);
   line-height: 1.62;
+}
+
+/* Вход заголовка закончился — слова перестают быть отдельными слоями.
+   Пиксели не меняются: к этому моменту motion и так оставил blur(0px) и
+   identity-transform, а will-change в кадре не участвует. */
+.hero__title.is-settled span,
+.hero__lead.is-settled span {
+  will-change: auto !important;
+  filter: none !important;
 }
 
 .hero__cta {

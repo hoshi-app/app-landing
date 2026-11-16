@@ -6,14 +6,20 @@
       "patched": "у компонента жёстко зашит <p>, а он нужен как настоящий <h1>"
     },
     "TextAnimations/ScrollFloat": {},
-    "TextAnimations/CurvedLoop": {},
+    "TextAnimations/CurvedLoop": {
+      "patched": "лента идёт 42 px/с, а SVG-текст перекладывался по всей ширине 60 раз в секунду"
+    },
     "Components/GooeyNav": {},
     "Components/Counter": {},
     "Animations/LogoLoop": {},
     "Animations/AnimatedContent": {},
     "Animations/PixelSwap": {},
-    "Animations/Noise": {},
+    "Animations/Noise": {
+      "patched": "пустой пылевой холст очищался каждый тик, а зерно дёргало кадр через background-position вместо композитного сдвига"
+    },
     "Animations/GradualBlur": {},
-    "Backgrounds/LightRays": {}
+    "Backgrounds/LightRays": {
+      "patched": "свет дрейфует медленно, а каждый кадр заново взводит backdrop-фильтр вуали шапки — 30 кадров в секунду вместо частоты монитора"
+    }
   }
 }

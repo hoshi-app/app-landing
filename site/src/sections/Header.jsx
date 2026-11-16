@@ -73,11 +73,16 @@ export default function Header() {
     <header className="head" onClick={onClick}>
       <div className="head__veil" aria-hidden="true">
         <ClientOnly>
+          {/* Слоёв четыре, а не девять: каждый слой — это отдельный проход
+              backdrop-filter, а свет героя под вуалью перерисовывается каждый
+              кадр. Радиусы и так идут по экспоненте, и четыре ступени вместе с
+              тинтом читаются как та же рампа — девять проходов покупали
+              разницу, которой не видно. */}
           <GradualBlur
             position="top"
             height="12rem"
             strength={1.6}
-            layers={9}
+            layers={4}
             curve="bezier"
             exponential
             tint="rgba(18, 18, 18, 0.38)"

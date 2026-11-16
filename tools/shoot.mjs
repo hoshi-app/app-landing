@@ -47,6 +47,18 @@ const BUDGET = {
   p95: 70,
   maxFrame: 160,
   longtask: 300,
+  // Покой на первом экране: сколько страница просит кадров, сколько площади
+  // канвасов заливает и сколько стеклянных слоёв держит. Это то, что видно
+  // в диспетчере задач как загрузку GPU, — бюджеты держат её низкой.
+  //
+  // rafPerSecond считает запросы, а не работу: тикер gsap, цикл зерна и сам
+  // свет просыпаются на каждом кадре монитора, даже когда кадр пропускается по
+  // потолку fps. Поэтому потолок здесь — только ловушка на разгон цикла
+  // (бесконечное «измерение → setState → рендер» даёт тысячи в секунду);
+  // реальная цена кадра — в canvasMpxPerSecond.
+  rafPerSecond: 900,
+  canvasMpxPerSecond: 60,
+  backdropSurfaces: 4,
 };
 
 const failures = [];
@@ -57,7 +69,38 @@ const fail = (message) => failures.push(message);
 
 /** Сбор CLS/LCP/FCP/longtask с первого байта страницы. */
 function perfInit() {
-  window.__perf = { cls: 0, lcp: 0, fcp: 0, longtasks: [], shifts: [], lcpElement: null };
+  window.__perf = {
+    cls: 0,
+    lcp: 0,
+    fcp: 0,
+    longtasks: [],
+    shifts: [],
+    lcpElement: null,
+    raf: 0,
+    canvasPx: 0,
+  };
+
+  /* Счётчики стоимости покоя: rAF-циклы и заливка канвасов. document.getAnimations()
+     их не видит — WebGL-свет и зерно живут на requestAnimationFrame. */
+  const raf = window.requestAnimationFrame.bind(window);
+  window.requestAnimationFrame = (callback) => {
+    window.__perf.raf += 1;
+    return raf(callback);
+  };
+  const countPaint = (proto, names) => {
+    if (!proto) return;
+    for (const name of names) {
+      const original = proto[name];
+      if (typeof original !== 'function') continue;
+      proto[name] = function count(...args) {
+        if (this.canvas) window.__perf.canvasPx += this.canvas.width * this.canvas.height;
+        return original.apply(this, args);
+      };
+    }
+  };
+  countPaint(CanvasRenderingContext2D.prototype, ['clearRect', 'fillRect', 'drawImage']);
+  countPaint(WebGLRenderingContext.prototype, ['drawArrays', 'drawElements']);
+  countPaint(WebGL2RenderingContext.prototype, ['drawArrays', 'drawElements']);
   new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
       if (entry.hadRecentInput) continue;
@@ -121,6 +164,47 @@ async function metrics(page) {
       infiniteRunning: infinite.length,
       overflow: document.documentElement.scrollWidth - window.innerWidth,
       height: document.documentElement.scrollHeight,
+    };
+  });
+}
+
+/**
+ * Стоимость покоя на первом экране: сколько раз страница просит кадр, сколько
+ * площади канвасов заливает, сколько держит backdrop-слоёв и не осталось ли в
+ * герое постоянных filter/will-change. Это прокси загрузки GPU: в headless
+ * Chromium WebGL считает SwiftShader, поэтому проценты берутся в живом браузере,
+ * а здесь держатся причины этих процентов.
+ */
+async function costProbe(page) {
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  await page.waitForTimeout(400);
+
+  return page.evaluate(async () => {
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const before = { raf: window.__perf.raf, px: window.__perf.canvasPx };
+    await wait(2000);
+    const after = { raf: window.__perf.raf, px: window.__perf.canvasPx };
+
+    const backdropSurfaces = [...document.querySelectorAll('*')].filter((element) => {
+      const style = getComputedStyle(element);
+      const filter = style.backdropFilter || style.webkitBackdropFilter;
+      return Boolean(filter) && filter !== 'none';
+    }).length;
+
+    const heroFilterSpans = [...document.querySelectorAll('.hero__title span, .hero__lead span')].filter(
+      (element) => {
+        const style = getComputedStyle(element);
+        const filtered = Boolean(style.filter) && style.filter !== 'none' && style.filter !== 'blur(0px)';
+        const hinted = Boolean(style.willChange) && style.willChange !== 'auto';
+        return filtered || hinted;
+      },
+    ).length;
+
+    return {
+      rafPerSecond: Math.round((after.raf - before.raf) / 2),
+      canvasMpxPerSecond: Number((((after.px - before.px) / 2) / 1e6).toFixed(1)),
+      backdropSurfaces,
+      heroFilterSpans,
     };
   });
 }
@@ -235,6 +319,7 @@ async function shoot(viewport, browser, url) {
   await goto(page, url);
   const m = await metrics(page);
   m.errors = errors;
+  m.cost = await costProbe(page);
   m.scroll = await scrollCost(page, await context.newCDPSession(page));
 
   const width = viewport.name;
@@ -359,6 +444,18 @@ async function main() {
       if (!m.interactions.nav.pillMoved) fail(`${viewport.name}: навбар не переключился по клику`);
       if (!m.interactions.nav.movedEarly) fail(`${viewport.name}: прокрутка не началась сразу после клика`);
       if (!m.interactions.swap.toggled) fail(`${viewport.name}: экран в телефоне не переключается`);
+      if (m.cost.rafPerSecond > BUDGET.rafPerSecond) {
+        fail(`${viewport.name}: ${m.cost.rafPerSecond} кадров/с в покое`);
+      }
+      if (m.cost.canvasMpxPerSecond > BUDGET.canvasMpxPerSecond) {
+        fail(`${viewport.name}: ${m.cost.canvasMpxPerSecond} Мп канвасов в секунду`);
+      }
+      if (m.cost.backdropSurfaces > BUDGET.backdropSurfaces) {
+        fail(`${viewport.name}: ${m.cost.backdropSurfaces} backdrop-слоёв`);
+      }
+      if (m.cost.heroFilterSpans > 0) {
+        fail(`${viewport.name}: ${m.cost.heroFilterSpans} span в герое с filter/will-change`);
+      }
     }
 
     await reducedMotion(browser, url);
@@ -397,6 +494,13 @@ async function main() {
       `  прокрутка @4x: 1440 p95 ${wide.scroll.p95} мс, 390 p95 ${narrow.scroll.p95} мс, ` +
         `longtask ${wide.scroll.longtasks.length + narrow.scroll.longtasks.length}`,
     );
+    for (const [name, m] of Object.entries(report.viewports)) {
+      console.log(
+        `  покой ${name.padEnd(5)} ${String(m.cost.rafPerSecond).padStart(3)} кадров/с · ` +
+          `${m.cost.canvasMpxPerSecond} Мп канвасов/с · backdrop ${m.cost.backdropSurfaces} · ` +
+          `span с filter ${m.cost.heroFilterSpans}`,
+      );
+    }
     console.log(`  лента: ${wide.interactions.marquee.moved ? 'едет' : 'стоит'}, экран: ${wide.interactions.swap.toggled ? 'переключается' : 'нет'}`);
     console.log(`  загрузка @4x CPU: FCP ${report.throttled.fcp} мс, LCP ${report.throttled.lcp} мс`);
     console.log(`  reduced-motion: ${JSON.stringify(still)}`);

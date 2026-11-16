@@ -5,6 +5,7 @@ dist/
 .capture/
 .shots/
 .backup/
+.pages/
 .screens-src/
 .capture-log.json
 *.local

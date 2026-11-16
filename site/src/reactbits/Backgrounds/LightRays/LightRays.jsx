@@ -319,6 +319,11 @@ const LightRays = ({
     let visible = true;
     let pageVisible = document.visibilityState !== 'hidden';
     let lost = false;
+    /* Лучи дрейфуют медленно: 30 кадров в секунду на глаз не отличить от 60,
+       а каждый нарисованный кадр заново взводит backdrop-фильтр вуали шапки —
+       она лежит прямо над светом. */
+    const FRAME_MS = 1000 / 30;
+    let nextAllowed = 0;
 
     let resizePending = false;
     const applyResize = () => {
@@ -352,6 +357,11 @@ const LightRays = ({
 
     const frame = now => {
       raf = 0;
+      if (now < nextAllowed) {
+        if (visible && pageVisible) raf = requestAnimationFrame(frame);
+        return;
+      }
+      nextAllowed = now + FRAME_MS;
       if (resizePending) {
         resizePending = false;
         applyResize();

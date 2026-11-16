@@ -1,0 +1,48 @@
+name: Pages
+
+# Собирает сайт на каждый пуш в main и выкладывает dist/ в ветку pages.
+# Pages настроен на «Deploy from a branch» → pages → /(root), поэтому публикация —
+# это обычный git push в ветку, а не actions/deploy-pages (он требует
+# источник «GitHub Actions» и снял бы ветку).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # --ignore-scripts: esbuild берёт бинарник из платформенного пакета,
+      # postinstall ему не нужен (так же ставится локально, см. README).
+      - run: npm ci --ignore-scripts
+
+      - run: npm run build
+
+      - run: npm run verify
+
+      - name: Publish dist to pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist
+          git init -q -b pages
+          git add -A
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -q -m "deploy: ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" pages

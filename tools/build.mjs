@@ -28,8 +28,26 @@ const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const gzip = (body) => zlib.gzipSync(body, { level: 9 }).length;
 const esc = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
+/* Windows-песочница DSH оставляет на дереве проекта метку «низкий уровень
+   целостности». esbuild.exe из node_modules запускается с ней же и уже не имеет
+   права удалить свой временный файл в %TEMP% — сборка падает с `Access is denied`
+   в vite:esbuild-transpile, успев стереть dist/. Свой temp лежит в проекте: он под
+   той же меткой, поэтому удаление проходит, а .tmp/ уже в .gitignore. */
+if (process.platform === 'win32') {
+  const TMP = path.join(ROOT, '.tmp');
+  await fs.mkdir(TMP, { recursive: true });
+  process.env.TMP = TMP;
+  process.env.TEMP = TMP;
+}
+
 /* Клиентская сборка: site/ -> dist/ ровно так, как описано в vite.config.js. */
 await build({ logLevel: 'warn' });
+
+/* GitHub Pages отдаёт ветку pages целиком, поэтому два служебных файла должны
+   ехать в самой сборке: CNAME держит домен (без него Pages снимает hoshi.tv),
+   .nojekyll выключает Jekyll — он не нужен статике и только переписывает URL. */
+await fs.writeFile(path.join(DIST, 'CNAME'), 'hoshi.tv\n', 'utf8');
+await fs.writeFile(path.join(DIST, '.nojekyll'), '', 'utf8');
 
 if (process.env.PRERENDER === '0') {
   console.log('build: PRERENDER=0 — статическая разметка не собиралась');

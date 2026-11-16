@@ -210,10 +210,19 @@ const CurvedLoop = ({
     let frame = 0;
     let last = 0;
     let visible = true;
+    /* Лента идёт 42 px/с, то есть меньше пикселя за кадр: перекладывать
+       SVG-текст по всей ширине 60 раз в секунду ради этого не нужно. */
+    const FRAME_MS = 1000 / 30;
+    let nextAllowed = 0;
 
     const tick = now => {
       frame = 0;
       if (!visible) return;
+      if (now < nextAllowed) {
+        frame = requestAnimationFrame(tick);
+        return;
+      }
+      nextAllowed = now + FRAME_MS;
       const dt = last ? Math.min((now - last) / 1000, 0.05) : 0;
       last = now;
       const scroll = scrollRef.current;
