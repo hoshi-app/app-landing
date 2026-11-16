@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="splash-title">
+  <title id="splash-title">Сплэш hoshi: карточка новости поверх стопки таких же экранов</title>
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="30%" r="58%">
+      <stop offset="0" stop-color="#818cf8" stop-opacity=".3"/>
+      <stop offset="1" stop-color="#818cf8" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-35%" y="-35%" width="170%" height="170%">
+      <feDropShadow dx="0" dy="26" stdDeviation="30" flood-color="#000000" flood-opacity=".6"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" rx="224" fill="#171717"/>
+  <rect width="1024" height="1024" rx="224" fill="url(#glow)"/>
+
+  <!-- Дальние экраны: одна новость — один экран, за текущим их ещё несколько. -->
+  <g transform="rotate(-7 512 512)">
+    <rect x="196" y="176" width="560" height="672" rx="44" fill="#1e1e21" stroke="#333338" stroke-width="2" opacity=".7"/>
+  </g>
+  <g transform="rotate(7 512 512)">
+    <rect x="196" y="176" width="560" height="672" rx="44" fill="#1e1e21" stroke="#333338" stroke-width="2" opacity=".7"/>
+  </g>
+
+  <!-- Текущий сплэш. -->
+  <g filter="url(#shadow)">
+    <rect x="232" y="196" width="560" height="640" rx="44" fill="#202024" stroke="#3b3b42" stroke-width="2"/>
+  </g>
+
+  <!-- Метка «новое» в углу. -->
+  <rect x="288" y="246" width="108" height="38" rx="19" fill="#818cf8" fill-opacity=".14" stroke="#818cf8" stroke-opacity=".38" stroke-width="2"/>
+  <circle cx="312" cy="265" r="6" fill="#818cf8"/>
+  <rect x="328" y="258" width="48" height="14" rx="7" fill="#818cf8" fill-opacity=".85"/>
+
+  <!-- Крестик закрытия. -->
+  <path d="M714 258 L742 286 M742 258 L714 286" stroke="#6b6b6b" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Звезда hoshi. -->
+  <g transform="translate(418 318) scale(0.0879)">
+    <path fill="#ffffff" d="m1313.21,5.89l217.33,367.92c2.19,3.71,6.2,5.96,10.5,5.89l581.1-8.54c12.22-.18,16.85,15.88,6.41,22.24l-421.75,256.76c-5.59,3.4-7.42,10.66-4.11,16.3l282.67,483.02c5.71,9.76-4.01,21.27-14.59,17.28l-681.39-257.37c-3.45-1.3-7.32-.95-10.47.97l-986.7,599.93c-11.03,6.71-23.42-6.36-16.13-17.02l516.47-755.48c4.38-6.41,1.61-15.23-5.65-17.99L7.76,424.75c-12.38-4.69-9.16-23.02,4.08-23.21l1015.12-14.41c3.91-.06,7.55-2.01,9.75-5.25L1292.97,5.25c4.95-7.27,15.77-6.92,20.24.65Z"/>
+  </g>
+
+  <!-- Заголовок и текст новости полосками: читается как разметка, но не тащит шрифт в картинку. -->
+  <rect x="332" y="500" width="360" height="30" rx="15" fill="#ffffff" fill-opacity=".92"/>
+  <rect x="392" y="546" width="240" height="30" rx="15" fill="#ffffff" fill-opacity=".92"/>
+  <rect x="312" y="620" width="400" height="14" rx="7" fill="#5a5a62"/>
+  <rect x="312" y="652" width="400" height="14" rx="7" fill="#5a5a62"/>
+  <rect x="362" y="684" width="300" height="14" rx="7" fill="#5a5a62"/>
+
+  <!-- Кнопка действия. -->
+  <rect x="352" y="738" width="320" height="68" rx="34" fill="#818cf8"/>
+  <rect x="444" y="765" width="136" height="14" rx="7" fill="#12121b" fill-opacity=".72"/>
+
+  <!-- Пара искр, чтобы тёмный фон не выглядел пустым. -->
+  <path d="M214 342c2.4 12.6 6.8 17 19.4 19.4-12.6 2.4-17 6.8-19.4 19.4-2.4-12.6-6.8-17-19.4-19.4 12.6-2.4 17-6.8 19.4-19.4Z" fill="#818cf8" fill-opacity=".85"/>
+  <path d="M846 600c1.6 8.4 4.6 11.4 13 13-8.4 1.6-11.4 4.6-13 13-1.6-8.4-4.6-11.4-13-13 8.4-1.6 11.4-4.6 13-13Z" fill="#818cf8" fill-opacity=".55"/>
+  <circle cx="820" cy="318" r="5" fill="#818cf8" fill-opacity=".5"/>
+  <circle cx="206" cy="706" r="4" fill="#818cf8" fill-opacity=".45"/>
+</svg>

@@ -3,8 +3,8 @@ title: Теперь в hoshi есть сплэши
 date: 2026-11-16
 tag: Обновление
 summary: При запуске hoshi показывает экран с тем, что важно: обновления, новые функции и всё, что стоит знать о приложении.
-img: favicon.svg
-img-alt: Иконка hoshi: белая звезда на тёмном фоне
+img: changelog/splash-update.svg
+img-alt: Сплэш hoshi: карточка новости с логотипом-звездой, полосками текста и кнопкой, за ней — стопка таких же экранов
 cta-label: Что нового
 cta-url: https://hoshi.tv/faq/changelog/
 note: hoshi · новости приложения
