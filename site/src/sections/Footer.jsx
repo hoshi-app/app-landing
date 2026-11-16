@@ -1,6 +1,7 @@
 import { Icon } from '../components/Icons';
 import { TELEGRAM } from '../data/landing';
 import { DOCS, LEGAL_ORDER, legalHref } from '../data/legal';
+import { LIST_PAGE, changelogHref } from '../data/changelog';
 
 export default function Footer({ base = './' }) {
   return (
@@ -14,7 +15,8 @@ export default function Footer({ base = './' }) {
           </div>
 
           <div className="foot__nav">
-            <nav aria-label="Документы">
+            <nav aria-label="Разделы">
+              <a href={changelogHref('', base)}>{LIST_PAGE.title}</a>
               {LEGAL_ORDER.map((slug) => (
                 <a key={slug} href={legalHref(slug, base)}>
                   {DOCS[slug].nav}

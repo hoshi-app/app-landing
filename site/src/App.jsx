@@ -6,7 +6,10 @@ import Catalog from './sections/Catalog';
 import Faq from './sections/Faq';
 import Footer from './sections/Footer';
 import Legal from './sections/Legal';
+import Changelog from './sections/Changelog';
+import NotFound from './sections/NotFound';
 import { docForPath } from './data/legal';
+import { changelogForPath } from './data/changelog';
 
 /**
  * Адрес страницы приходит из `path` — так сборка предрендерит каждый документ
@@ -29,8 +32,10 @@ function Landing() {
   );
 }
 
-export default function App({ path }) {
-  const doc = docForPath(path ?? (typeof window === 'undefined' ? '/' : window.location.pathname));
+export default function App({ path, notFound = false }) {
+  const route = path ?? (typeof window === 'undefined' ? '/' : window.location.pathname);
+  const doc = notFound ? null : docForPath(route);
+  const log = notFound ? null : changelogForPath(route);
 
   return (
     <>
@@ -38,7 +43,15 @@ export default function App({ path }) {
       <a className="skip" href="#main">
         К содержанию
       </a>
-      {doc ? <Legal doc={doc} /> : <Landing />}
+      {notFound ? (
+        <NotFound />
+      ) : log ? (
+        <Changelog page={log} />
+      ) : doc ? (
+        <Legal doc={doc} />
+      ) : (
+        <Landing />
+      )}
     </>
   );
 }

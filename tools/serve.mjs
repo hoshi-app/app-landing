@@ -67,6 +67,9 @@ function handler(root) {
     const rel = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname);
     let file = path.normalize(path.join(root, rel));
 
+    // адрес с «/» на конце — это каталог, как на GitHub Pages: /faq/changelog/
+    if (rel.endsWith('/')) file = path.join(file, 'index.html');
+
     if (file !== root && !file.startsWith(root + path.sep)) {
       res.writeHead(403).end('forbidden');
       return;
@@ -74,6 +77,7 @@ function handler(root) {
 
     let body;
     let type;
+    let status = 200;
     try {
       body = await fs.readFile(file);
       type = MIME[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
@@ -86,14 +90,23 @@ function handler(root) {
         file = alias;
         type = MIME['.html'];
       } catch {
-        // сборка однофайловая: любой неизвестный путь отдаёт index.html
-        file = path.join(root, 'index.html');
+        // и каталог без слэша: /faq/changelog -> /faq/changelog/index.html
+        const index = path.join(file, 'index.html');
         try {
-          body = await fs.readFile(file);
+          body = await fs.readFile(index);
+          file = index;
           type = MIME['.html'];
         } catch {
-          res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('not found');
-          return;
+          // неизвестный путь — своя 404-страница и код 404, как на GitHub Pages
+          file = path.join(root, '404.html');
+          try {
+            body = await fs.readFile(file);
+            type = MIME['.html'];
+            status = 404;
+          } catch {
+            res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('not found');
+            return;
+          }
         }
       }
     }
@@ -109,7 +122,7 @@ function handler(root) {
       }
     }
 
-    res.writeHead(200, headers).end(body);
+    res.writeHead(status, headers).end(body);
   };
 }
 

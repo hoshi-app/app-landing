@@ -16,13 +16,20 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'vite';
 import { LEGAL_PAGES, DOCS_DIR } from '../site/src/data/legal.js';
+import { CHANGELOG, CHANGELOG_DIR, FEED_LIMIT, LIST_PAGE } from '../site/src/data/changelog.js';
+import { NOT_FOUND } from '../site/src/data/notFound.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
 const SSR_DIR = path.join(ROOT, '.ssr');
+
+/* Канонический адрес сайта — только для абсолютных ссылок в фиде: приложение
+   получает готовые URL картинок и записей, а не склеивает их само. */
+const SITE = (process.env.SITE_URL ?? 'https://hoshi.tv').replace(/\/+$/, '');
 
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const gzip = (body) => zlib.gzipSync(body, { level: 9 }).length;
@@ -66,7 +73,7 @@ if (process.env.PRERENDER === '0') {
   });
 
   const serverEntry = path.join(SSR_DIR, 'entry-server.js');
-  const { render } = await import(pathToFileURL(serverEntry).href);
+  const { render, render404 } = await import(pathToFileURL(serverEntry).href);
 
   const indexFile = path.join(DIST, 'index.html');
   const template = await fs.readFile(indexFile, 'utf8');
@@ -77,6 +84,16 @@ if (process.env.PRERENDER === '0') {
   const fill = (page, markup) =>
     page.replace('<div id="root"></div>', `<div id="root">${markup}</div>`);
 
+  /* Шаблон собран с base: './', то есть под корень сайта. Вложенной странице
+     эти href/src нужно переписать под её глубину, а 404 — под корень «/»:
+     её адрес заранее неизвестен. */
+  const rebase = (page, base) =>
+    page
+      /* кадр приложения вложенным страницам не нужен — предзагрузка только мешает */
+      .replace(/\s*<link rel="preload" as="image" href="\.\/screens\/title\.avif"[^>]*>/, '')
+      .replace(/\s(href|src)="\.\//g, ` $1="${base}`)
+      .replace(/(<meta\s+property="og:image"[^>]*content=")\.\//s, `$1${base}`);
+
   /* Юридические документы: своя разметка и свой <head> на каждый адрес.
      Файлы лежат как dist/faq/docs/<slug>.html — так GitHub Pages отдаёт
      /faq/docs/terms, а ссылки в текстах и футере указывают на него без
@@ -84,15 +101,11 @@ if (process.env.PRERENDER === '0') {
      относительные href/src из шаблона (assets, fonts, иконки, og) получают
      префикс «../../»: иначе они просили бы /faq/docs/assets/…. */
   const docHead = (page, doc) =>
-    page
+    rebase(page, '../../')
       .replace(/<title>[^<]*<\/title>/, `<title>${esc(doc.title)} — hoshi</title>`)
       .replace(/(<meta\s+name="description"[^>]*content=")[^"]*/s, `$1${esc(doc.description)}`)
       .replace(/(<meta\s+property="og:title"[^>]*content=")[^"]*/s, `$1${esc(doc.title)} — hoshi`)
-      .replace(/(<meta\s+property="og:description"[^>]*content=")[^"]*/s, `$1${esc(doc.description)}`)
-      /* кадр приложения документам не нужен — предзагрузка только мешает */
-      .replace(/\s*<link rel="preload" as="image" href="\.\/screens\/title\.avif"[^>]*>/, '')
-      .replace(/\s(href|src)="\.\//g, ' $1="../../')
-      .replace(/(<meta\s+property="og:image"[^>]*content=")\.\//s, '$1../../');
+      .replace(/(<meta\s+property="og:description"[^>]*content=")[^"]*/s, `$1${esc(doc.description)}`);
 
   for (const doc of LEGAL_PAGES) {
     const page = docHead(template, doc);
@@ -104,12 +117,101 @@ if (process.env.PRERENDER === '0') {
     );
   }
 
+  /* Лента обновлений: /faq/changelog/ со списком и /faq/changelog/<slug> с
+     каждой записью. Страницы лежат на той же глубине, что документы, поэтому
+     docHead с «../../» подходит им без правок. */
+  const logDir = path.join(DIST, CHANGELOG_DIR);
+  await fs.mkdir(logDir, { recursive: true });
+
+  const logPages = [
+    { url: `/${CHANGELOG_DIR}/`, file: 'index.html', head: LIST_PAGE },
+    ...CHANGELOG.map((entry) => ({
+      url: `/${CHANGELOG_DIR}/${entry.slug}`,
+      file: `${entry.slug}.html`,
+      head: { title: entry.title, description: entry.summary },
+      entry,
+    })),
+  ];
+
+  for (const logPage of logPages) {
+    let page = docHead(template, logPage.head);
+    if (logPage.entry?.cover) {
+      const { cover } = logPage.entry;
+      const type = cover.src.endsWith('.webp')
+        ? 'image/webp'
+        : cover.src.endsWith('.png')
+          ? 'image/png'
+          : 'image/jpeg';
+      page = page
+        .replace(/(<meta\s+property="og:image"[^>]*content=")[^"]*/, `$1../../${cover.src}`)
+        .replace(/(<meta\s+property="og:image:type"[^>]*content=")[^"]*/, `$1${type}`)
+        .replace(/(<meta\s+property="og:image:width"[^>]*content=")[^"]*/, `$1${cover.width}`)
+        .replace(/(<meta\s+property="og:image:height"[^>]*content=")[^"]*/, `$1${cover.height}`);
+    }
+    await fs.writeFile(path.join(logDir, logPage.file), fill(page, render(logPage.url)), 'utf8');
+  }
+
+  /* Фид для приложения собирается из тех же записей, что и страницы.
+     version — хэш содержимого: приложение кэширует его и показывает рекламный
+     экран один раз, а меняется он только при правке ленты (даты сборки в хэше
+     нет, поэтому повторная сборка даёт тот же файл). */
+  const feedEntry = (entry) => ({
+    slug: entry.slug,
+    date: entry.date,
+    tag: entry.tag,
+    title: entry.title,
+    summary: entry.summary,
+    url: `${SITE}/${CHANGELOG_DIR}/${entry.slug}`,
+    cover: entry.cover
+      ? {
+          url: `${SITE}/${entry.cover.src}`,
+          width: entry.cover.width,
+          height: entry.cover.height,
+          alt: entry.cover.alt,
+        }
+      : null,
+    cta: entry.cta ?? null,
+    promo: entry.promo === true,
+    until: entry.until ?? null,
+  });
+
+  const promoEntry = CHANGELOG.find((entry) => entry.promo === true);
+  const logBody = {
+    site: SITE,
+    listUrl: `${SITE}/${CHANGELOG_DIR}/`,
+    promo: promoEntry ? feedEntry(promoEntry) : null,
+    entries: CHANGELOG.slice(0, FEED_LIMIT).map(feedEntry),
+  };
+  const feed = {
+    version: createHash('sha1').update(JSON.stringify(logBody)).digest('hex').slice(0, 12),
+    ...logBody,
+  };
+  const feedJson = `${JSON.stringify(feed, null, 2)}\n`;
+  await fs.writeFile(path.join(logDir, 'feed.json'), feedJson, 'utf8');
+
+  /* 404 отдаётся на любой несуществующий адрес (GitHub Pages берёт этот файл
+     автоматически), поэтому её адрес заранее неизвестен: все пути в ней — от
+     корня «/», иначе на глубине вроде /faq/ стили просились бы из /faq/assets.
+     data-page="404" — метка для main.jsx: по URL эту страницу не узнать. */
+  const notFoundHead = rebase(template, '/')
+    .replace(/<title>[^<]*<\/title>/, `<title>${esc(NOT_FOUND.title)} — hoshi</title>`)
+    .replace(/(<meta\s+name="description"[^>]*content=")[^"]*/s, `$1${esc(NOT_FOUND.text)}`)
+    .replace(/(<meta\s+property="og:title"[^>]*content=")[^"]*/s, `$1${esc(NOT_FOUND.title)} — hoshi`)
+    .replace(/(<meta\s+property="og:description"[^>]*content=")[^"]*/s, `$1${esc(NOT_FOUND.text)}`)
+    .replace(/<html lang="ru"/, '<html lang="ru" data-page="404"')
+    .replace('</head>', '    <meta name="robots" content="noindex" />\n  </head>');
+  const notFoundPage = fill(notFoundHead, render404());
+  await fs.writeFile(path.join(DIST, '404.html'), notFoundPage, 'utf8');
+
   const markup = render('/');
   await fs.writeFile(indexFile, fill(template, markup), 'utf8');
   await fs.rm(SSR_DIR, { recursive: true, force: true });
 
   console.log(`build: predrender ${kb(markup.length)} разметки в dist/index.html`);
   console.log(`build: страниц документов ${LEGAL_PAGES.length}`);
+  console.log(
+    `build: лента — ${CHANGELOG.length} записей, ${logPages.length} страниц, фид ${kb(Buffer.byteLength(feedJson))}, 404 ${kb(Buffer.byteLength(notFoundPage))}`,
+  );
 }
 
 /* Итог одной строкой на единицу: по этим числам потом сравнивают версии. */

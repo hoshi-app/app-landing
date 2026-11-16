@@ -13,6 +13,8 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { LEGAL_PAGES, DOCS_DIR } from '../site/src/data/legal.js';
+import { CHANGELOG, CHANGELOG_DIR, FEED_LIMIT, LIST_PAGE, changelogForPath } from '../site/src/data/changelog.js';
+import { NOT_FOUND } from '../site/src/data/notFound.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -239,6 +241,200 @@ check(
   'старых корневых адресов документов нет',
 );
 check(!docPages.some((page) => page.includes('смотрится просто')), 'документы не несут заголовок героя');
+
+/* ------------------------------------------------------ лента обновлений */
+
+const logSlugs = CHANGELOG.map((entry) => entry.slug);
+check(logSlugs.length > 0, 'в ленте есть записи');
+check(new Set(logSlugs).size === logSlugs.length, 'slug записей не повторяются');
+check(logSlugs.every((slug) => /^[a-z0-9-]+$/.test(slug)), 'slug записей — латиница, цифры и дефис');
+check(
+  CHANGELOG.every((entry) => /^\d{4}-\d{2}-\d{2}$/.test(entry.date)),
+  'даты записей в формате YYYY-MM-DD',
+);
+check(
+  CHANGELOG.every((entry, index) => index === 0 || CHANGELOG[index - 1].date >= entry.date),
+  'записи отсортированы от новых к старым',
+);
+check(
+  CHANGELOG.every((entry) => entry.title && entry.summary && entry.tag),
+  'у каждой записи есть заголовок, лид и тег',
+);
+check(
+  CHANGELOG.every((entry) => Array.isArray(entry.body) && entry.body.length > 0),
+  'у каждой записи есть текст',
+);
+check(
+  CHANGELOG.every((entry) => !entry.until || entry.until >= entry.date),
+  'until не раньше даты записи',
+);
+check(
+  CHANGELOG.every((entry) => !entry.cta || /^https:\/\//.test(entry.cta.url)),
+  'кнопки записей ведут на https',
+);
+check(
+  CHANGELOG.every(
+    (entry) =>
+      !entry.cover ||
+      (Boolean(entry.cover.src) && Boolean(entry.cover.alt) && entry.cover.width > 0 && entry.cover.height > 0),
+  ),
+  'у обложек есть src, alt и размеры',
+);
+check(
+  CHANGELOG.every(
+    (entry) =>
+      !entry.logo ||
+      (Boolean(entry.logo.src) && Boolean(entry.logo.alt) && entry.logo.width > 0 && entry.logo.height > 0),
+  ),
+  'у круглых знаков есть src, alt и размеры',
+);
+check(
+  CHANGELOG.every(
+    (entry) =>
+      !entry.channel ||
+      (/^https:\/\//.test(entry.channel.url) && Boolean(entry.channel.label) && Boolean(entry.channel.handle)),
+  ),
+  'у карточек каналов есть подпись, адрес и https-ссылка',
+);
+check(
+  changelogForPath('/faq/changelog/')?.list === true &&
+    changelogForPath('/faq/changelog')?.list === true &&
+    changelogForPath('/app-landing/faq/changelog/')?.list === true &&
+    changelogForPath(`/faq/changelog/${logSlugs[0]}`)?.slug === logSlugs[0] &&
+    changelogForPath(`/faq/changelog/${logSlugs[0]}/`)?.slug === logSlugs[0] &&
+    changelogForPath('/faq/changelog/nope') === null &&
+    changelogForPath('/faq/docs/terms') === null &&
+    changelogForPath('/') === null,
+  'адреса ленты разбираются как список, запись или не наше',
+);
+
+const readDist = async (rel) => {
+  try {
+    return await fs.readFile(path.join(DIST, rel), 'utf8');
+  } catch {
+    return '';
+  }
+};
+
+check(files.has(`${CHANGELOG_DIR}/index.html`), 'есть список /faq/changelog/');
+check(
+  logSlugs.every((slug) => files.has(`${CHANGELOG_DIR}/${slug}.html`)),
+  'у каждой записи свой HTML',
+);
+check(files.has(`${CHANGELOG_DIR}/feed.json`), 'есть фид /faq/changelog/feed.json');
+check(
+  CHANGELOG.every((entry) => !entry.logo || files.has(entry.logo.src)),
+  'круглые знаки записей собраны в dist',
+);
+
+const listHtml = await readDist(`${CHANGELOG_DIR}/index.html`);
+check(/id="root">\s*<\w/.test(listHtml), 'список ленты предрендерен');
+check((listHtml.match(/<h1[\s>]/g) ?? []).length === 1, 'в списке ленты один <h1>');
+check(listHtml.includes(LIST_PAGE.title), `в списке ленты заголовок «${LIST_PAGE.title}»`);
+check(
+  logSlugs.every((slug) => listHtml.includes(`href="./${slug}"`)),
+  'список ссылается на каждую запись',
+);
+check(listHtml.includes('="../../assets/'), 'список ленты берёт бандл через ../../');
+check(
+  listHtml.includes('class="doc__back log__back"') && listHtml.indexOf('doc__back') > listHtml.indexOf('<main'),
+  'в списке ленты ссылка «На главную» стоит над контентом',
+);
+
+const entryPages = await Promise.all(
+  CHANGELOG.map((entry) => readDist(`${CHANGELOG_DIR}/${entry.slug}.html`)),
+);
+const entryOk = (entry, page) =>
+  /id="root">\s*<\w/.test(page) &&
+  (page.match(/<h1[\s>]/g) ?? []).length === 1 &&
+  page.includes(`<title>${entry.title} — hoshi</title>`) &&
+  page.includes('class="doc__back log__back"') &&
+  page.indexOf('doc__back') > page.indexOf('<main') &&
+  page.indexOf('log__back') < page.indexOf('<h1') &&
+  page.includes('href="../../faq/changelog/"') &&
+  !page.includes('href="../"') &&
+  page.includes('="../../assets/') &&
+  (!entry.cover || page.includes(`src="../../${entry.cover.src}"`)) &&
+  (!entry.logo || page.includes(`src="../../${entry.logo.src}"`)) &&
+  (!entry.channel || page.includes(`href="${entry.channel.url}"`));
+check(
+  CHANGELOG.every((entry, index) => entryOk(entry, entryPages[index])),
+  `страницы записей предрендерены (${entryPages.filter((page, index) => entryOk(CHANGELOG[index], page)).length}/${CHANGELOG.length})`,
+);
+check(
+  CHANGELOG.every((entry) => entryPages[logSlugs.indexOf(entry.slug)]?.includes(entry.summary)),
+  'лид записи есть в её HTML',
+);
+
+let feed = null;
+try {
+  feed = JSON.parse(await readDist(`${CHANGELOG_DIR}/feed.json`));
+} catch {
+  feed = null;
+}
+check(Boolean(feed), 'фид ленты парсится как JSON');
+if (feed) {
+  check(/^[0-9a-f]{12}$/.test(String(feed.version)), 'version фида — 12 hex-символов');
+  check(/^https:\/\//.test(String(feed.site)), 'site фида — абсолютный https');
+  check(feed.listUrl === `${feed.site}/${CHANGELOG_DIR}/`, 'listUrl указывает на /faq/changelog/');
+  check(
+    Array.isArray(feed.entries) && feed.entries.length === Math.min(FEED_LIMIT, CHANGELOG.length),
+    `в фиде ${feed.entries?.length ?? 0} записей (ожидалось ${Math.min(FEED_LIMIT, CHANGELOG.length)})`,
+  );
+  check(
+    (feed.entries ?? []).every(
+      (entry) => entry.url === `${feed.site}/${CHANGELOG_DIR}/${entry.slug}`,
+    ),
+    'url записей в фиде абсолютные и совпадают со slug',
+  );
+  check(
+    (feed.entries ?? []).every((entry) => entry.title && entry.summary && entry.tag && entry.date),
+    'у записей в фиде есть дата, тег, заголовок и лид',
+  );
+  check(
+    (feed.promo?.slug ?? null) === (CHANGELOG.find((entry) => entry.promo === true)?.slug ?? null),
+    'promo в фиде — самая свежая запись с promo',
+  );
+  check(
+    (feed.entries ?? []).every(
+      (entry) =>
+        !entry.cover ||
+        (files.has(entry.cover.url.slice(`${feed.site}/`.length)) &&
+          Boolean(entry.cover.alt) &&
+          entry.cover.width > 0 &&
+          entry.cover.height > 0),
+    ),
+    'обложки в фиде указывают на существующие файлы',
+  );
+  for (const entry of feed.entries ?? []) {
+    const cover = entry.cover;
+    if (!cover || !cover.url.endsWith('.webp')) continue;
+    const rel = cover.url.slice(`${feed.site}/`.length);
+    const actual = webpSize(await fs.readFile(path.join(DIST, rel)));
+    check(
+      Boolean(actual) && actual.width === cover.width && actual.height === cover.height,
+      `обложка ${rel} совпадает по размерам`,
+    );
+  }
+  check(!/<[a-z][^>]*>/i.test(JSON.stringify(feed)), 'в фиде нет HTML');
+}
+check(html.includes('href="./faq/changelog/"'), 'футер лендинга ссылается на ленту');
+
+/* -------------------------------------------------------------------- 404 */
+
+check(files.has('404.html'), 'есть 404.html');
+const notFoundHtml = await readDist('404.html');
+check(/id="root">\s*<\w/.test(notFoundHtml), '404 предрендерена');
+check((notFoundHtml.match(/<h1[\s>]/g) ?? []).length === 1, 'на 404 один <h1>');
+check(notFoundHtml.includes(`<title>${NOT_FOUND.title} — hoshi</title>`), 'у 404 свой <title>');
+check(notFoundHtml.includes('data-page="404"'), '404 помечена для клиента');
+check(/<meta\s+name="robots"[^>]*content="noindex"/.test(notFoundHtml), '404 закрыта от индексации');
+check(
+  notFoundHtml.includes('href="/"') && notFoundHtml.includes('href="/faq/changelog/"'),
+  '404 ведёт на главную и в ленту',
+);
+check(notFoundHtml.includes('href="/assets/'), '404 берёт бандл от корня');
+check(!/="(\.\.\/|\.\/)/.test(notFoundHtml), '404 не использует относительные пути');
 
 /* ---------------------------------------------------------- доступность */
 

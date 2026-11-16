@@ -13,3 +13,8 @@ import App from './App.jsx';
 export function render(path = '/') {
   return renderToString(<App path={path} />);
 }
+
+/** 404 отдаётся на произвольный адрес, поэтому рендерится без пути. */
+export function render404() {
+  return renderToString(<App notFound />);
+}

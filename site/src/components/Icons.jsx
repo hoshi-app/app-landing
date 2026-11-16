@@ -47,6 +47,10 @@ export function IconSprite() {
         <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
           <path d="M6 9.5 12 15.5 18 9.5" />
         </symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7 17 17 7" />
+          <path d="M8.5 7H17v8.5" />
+        </symbol>
         <symbol id="i-telegram" viewBox="0 0 24 24" fill="currentColor">
           <path d="M21.94 4.3 18.9 19.19c-.23 1.02-.84 1.27-1.7.79l-4.7-3.46-2.27 2.18c-.25.25-.46.46-.94.46l.33-4.76 8.66-7.82c.38-.33-.08-.52-.58-.19L6.6 13.6l-4.6-1.44c-1-.31-1.02-1 .21-1.48l18-6.94c.83-.32 1.56.2 1.29 1.56Z" />
         </symbol>

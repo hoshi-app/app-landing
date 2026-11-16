@@ -6,6 +6,7 @@
 
 - [Каталог](https://hoshi.tv/#catalog): 24 091 тайтл и 46 жанров — онгоинги, классика и анонсы
 - [Вопросы](https://hoshi.tv/#faq): платность, аккаунт, источники видео, просмотр без сети, платформы, магазины
+- [Что нового](https://hoshi.tv/faq/changelog/): обновления, акции и новости приложения; машинная лента — https://hoshi.tv/faq/changelog/feed.json
 
 iOS-версия уже раздаётся через TestFlight; App Store и Google Play — дальше, следить за выходом можно в Telegram-канале @hoshiapp.
 

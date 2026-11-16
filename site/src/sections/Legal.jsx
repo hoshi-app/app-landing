@@ -1,5 +1,5 @@
 import Footer from './Footer';
-import { Icon } from '../components/Icons';
+import DocBar from '../components/DocBar';
 import { DOCS, DOC_CONTACT, legalHref } from '../data/legal';
 
 /**
@@ -18,17 +18,7 @@ const ROOT = '../../';
 export default function Legal({ doc }) {
   return (
     <>
-      <header className="doc__bar">
-        <div className="shell doc__row">
-          <a href={ROOT} aria-label="hoshi — на главную">
-            <img src={`${ROOT}logo.svg`} width="110" height="20" alt="hoshi" />
-          </a>
-          <a className="doc__back" href={ROOT}>
-            <Icon name="chevron" className="i doc__back-icon" />
-            На главную
-          </a>
-        </div>
-      </header>
+      <DocBar root={ROOT} backHref={ROOT} />
 
       <main className="doc" id="main" tabIndex={-1}>
         <div className="shell doc__wrap">
