@@ -6,9 +6,7 @@
       "patched": "у компонента жёстко зашит <p>, а он нужен как настоящий <h1>"
     },
     "TextAnimations/ScrollFloat": {},
-    "TextAnimations/CurvedLoop": {
-      "patched": "лента идёт 42 px/с, а SVG-текст перекладывался по всей ширине 60 раз в секунду"
-    },
+    "TextAnimations/CurvedLoop": {},
     "Components/GooeyNav": {},
     "Components/Counter": {},
     "Animations/LogoLoop": {},

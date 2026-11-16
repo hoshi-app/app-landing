@@ -170,43 +170,6 @@ const PATCHES = [
       },
     ],
   },
-  {
-    file: 'TextAnimations/CurvedLoop/CurvedLoop.jsx',
-    why: 'лента идёт 42 px/с, а SVG-текст перекладывался по всей ширине 60 раз в секунду',
-    edits: [
-      {
-        from: [
-          '    let frame = 0;',
-          '    let last = 0;',
-          '    let visible = true;',
-          '',
-          '    const tick = now => {',
-          '      frame = 0;',
-          '      if (!visible) return;',
-          '      const dt = last ? Math.min((now - last) / 1000, 0.05) : 0;',
-        ].join('\n'),
-        to: [
-          '    let frame = 0;',
-          '    let last = 0;',
-          '    let visible = true;',
-          '    /* Лента идёт 42 px/с, то есть меньше пикселя за кадр: перекладывать',
-          '       SVG-текст по всей ширине 60 раз в секунду ради этого не нужно. */',
-          '    const FRAME_MS = 1000 / 30;',
-          '    let nextAllowed = 0;',
-          '',
-          '    const tick = now => {',
-          '      frame = 0;',
-          '      if (!visible) return;',
-          '      if (now < nextAllowed) {',
-          '        frame = requestAnimationFrame(tick);',
-          '        return;',
-          '      }',
-          '      nextAllowed = now + FRAME_MS;',
-          '      const dt = last ? Math.min((now - last) / 1000, 0.05) : 0;',
-        ].join('\n'),
-      },
-    ],
-  },
 ];
 
 const fail = (message) => {
