@@ -1,137 +1,25 @@
 /**
- * changelog.js — лента обновлений и рекламные записи.
+ * changelog.js — данные ленты для страницы.
  *
- * Запись — дата, тег, заголовок, лид и текст. Живёт рядом с текстами лендинга
- * и документов по тем же правилам: разметка отдельно (sections/Changelog.jsx),
- * содержимое отдельно. Строка в `body` — абзац, массив строк — маркированный
- * список.
+ * Сами новости лежат в site/src/data/changelog/*.md: один файл — одна новость.
+ * tools/changelog.mjs разбирает их на сборке, а Vite отдаёт готовый массив через
+ * `virtual:changelog` — с уже собранным HTML. Markdown-парсер в браузер не едет.
  *
- * Из этого же файла собираются три вещи:
- *   /faq/changelog/            список записей (site)
- *   /faq/changelog/<slug>      сама запись (site)
- *   /faq/changelog/feed.json   лента для приложения (tools/build.mjs)
- * Поэтому рекламный экран в приложении меняется правкой одного объекта здесь
- * и пушем в main — обновление приложения не нужно.
- *
- * `promo: true` помечает запись, которая показывается в приложении отдельным
- * экраном. Срок `until` не фильтруется сборкой: фид остаётся детерминированным,
- * а дату сверяет приложение — иначе экран не истекал бы в офлайн-кэше.
+ * Здесь остаются только выборки и ссылки; разметка — в sections/Changelog.jsx.
  */
-import { TELEGRAM_UPDATES } from './landing.js';
+import entries from 'virtual:changelog';
+import {
+  CHANGELOG_DIR,
+  LIST_PAGE,
+  changelogForPath as resolveChangelog,
+  changelogHref,
+  dateLabel,
+} from './changelog-config.js';
 
-/** Каталог ленты на сайте: /faq/changelog/. */
-export const CHANGELOG_DIR = 'faq/changelog';
+export { CHANGELOG_DIR, LIST_PAGE, changelogHref, dateLabel };
 
-/** Заголовок и лид страницы-списка; их же берёт <head> этой страницы. */
-export const LIST_PAGE = {
-  title: 'Что нового',
-  description:
-    'Обновления, акции и новости приложения hoshi: что изменилось, что появилось и что будет дальше.',
-};
+/** Все записи, новые сверху: порядок задаёт loadChangelog(). */
+export const CHANGELOG = entries;
 
-/** Сколько последних записей уезжает в фид: приложению хватает свежего. */
-export const FEED_LIMIT = 20;
-
-/** Русские месяцы в родительном падеже: Intl на сервере и в браузере может
-    разойтись, а гидратация не прощает разной разметки. */
-const MONTHS = [
-  'января',
-  'февраля',
-  'марта',
-  'апреля',
-  'мая',
-  'июня',
-  'июля',
-  'августа',
-  'сентября',
-  'октября',
-  'ноября',
-  'декабря',
-];
-
-/** '2026-11-16' → '16 ноября 2026'. */
-export function dateLabel(iso) {
-  const [year, month, day] = String(iso).split('-');
-  return `${Number(day)} ${MONTHS[Number(month) - 1]} ${year}`;
-}
-
-/**
- * Ссылка на список или на запись; пустой slug — сам список. Относительная:
- * сборка живёт и в подпапке хостинга.
- */
-export const changelogHref = (slug = '', base = './') => `${base}${CHANGELOG_DIR}/${slug}`;
-
-/**
- * Записи. Порядок в массиве не важен: CHANGELOG сортирует по дате.
- *
- * Поля:
- *   slug    — сегмент URL, ^[a-z0-9-]+$
- *   date    — YYYY-MM-DD
- *   tag     — бейдж: «Обновление», «Акция», «Новость»
- *   title   — заголовок списка и записи, он же <title>
- *   summary — лид: description, тизер в списке, поле фида
- *   body    — текст записи: абзац или массив пунктов
- *   logo    — круглый знак-аватар над заголовком; размеры обязательны
- *   cover   — картинка от корня сайта или null; размеры обязательны
- *   channel — карточка канала: подпись, адрес и ссылка или null
- *   cta     — кнопка действия или null
- *   note    — мелкая подпись под кнопкой или null
- *   promo   — показывать отдельным экраном в приложении
- *   until   — до какой даты показывать; сверяет приложение
- */
-const ENTRIES = [
-  {
-    slug: 'telegram',
-    date: '2026-11-16',
-    tag: 'Новость',
-    title: 'У hoshi появился Telegram-канал',
-    summary:
-      'Обновления теперь приходят в Telegram: в канале hoshi beta updates — когда вышла версия и что в ней появилось.',
-    body: [
-      'Канал hoshi beta updates — только про обновления приложения. Одна версия — одно сообщение: что вышло и что в нём поменялось.',
-      'Что публикуем:',
-      [
-        'когда вышло обновление — дата и платформа: iOS или Android;',
-        'что в нём появилось и что изменилось;',
-        'что исправили, если версия была про ошибки.',
-      ],
-      'Подписаться можно по ссылке ниже. Канал закрытый: войти в него можно только по приглашению.',
-    ],
-    logo: {
-      src: 'changelog/telegram.svg',
-      width: 1000,
-      height: 1000,
-      alt: 'Логотип Telegram: синий круг с белым бумажным самолётиком',
-    },
-    cover: null,
-    channel: {
-      label: 'hoshi beta updates',
-      handle: 't.me/+sFVfKMdNwFIxNjEy',
-      url: TELEGRAM_UPDATES,
-    },
-    cta: { label: 'Открыть канал', url: TELEGRAM_UPDATES },
-    note: 'hoshi beta updates · только обновления приложения',
-    promo: false,
-    until: null,
-  },
-];
-
-/** Все записи, новые сверху. */
-export const CHANGELOG = [...ENTRIES].sort((a, b) => b.date.localeCompare(a.date));
-
-/**
- * Что рисовать на адресе: { list: true } для /faq/changelog[/], сама запись
- * для /faq/changelog/<slug>, null — адрес не наш. Неизвестный slug — тоже null:
- * иначе клиент рисовал бы список поверх отданного лендинга и гидратация
- * расходилась бы с сервером (как у неизвестного документа).
- */
-export function changelogForPath(pathname) {
-  const match = String(pathname ?? '').match(
-    new RegExp(`(?:^|/)${CHANGELOG_DIR}(?:/([^/]+?))?/?$`),
-  );
-  if (!match) return null;
-
-  const slug = match[1];
-  if (!slug || slug === 'index.html') return { list: true };
-  return CHANGELOG.find((entry) => entry.slug === slug) ?? null;
-}
+/** Что рисовать на адресе: список, запись или ничего. */
+export const changelogForPath = (pathname) => resolveChangelog(pathname, CHANGELOG);

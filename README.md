@@ -152,110 +152,116 @@ GitHub не видит у домена свои адреса. Лечение: с
 | Адрес | Что отдаёт |
 |---|---|
 | `/faq/changelog/` | список записей: дата, тег, заголовок, лид |
-| `/faq/changelog/<slug>` | запись целиком: знак канала или обложка, текст, кнопка действия |
-| `/faq/changelog/feed.json` | лента для приложения: рекламный экран и новости |
+| `/faq/changelog/<slug>` | запись целиком: знак или обложка, текст, кнопка действия |
+| `/faq/changelog/<slug>/export.md` | исходный `.md` записи — его приложение рисует само |
+| `/faq/changelog/feed.json` | маршрутизатор для приложения: список и актуальные сплэши |
 
-Записи — массив `ENTRIES` (сортированная копия — экспорт `CHANGELOG`) в
-`site/src/data/changelog.js`, разметка — одна на всех в `site/src/sections/Changelog.jsx`.
-Сборка рендерит `dist/faq/changelog/index.html` и
-`dist/faq/changelog/<slug>.html` (глубина та же, что у документов, поэтому относительные
-пути — `../../`) и из тех же записей пишет `dist/faq/changelog/feed.json`. Отдельного
-сервера и CMS нет: приложение забирает готовый JSON со статики.
+### Одна новость — один файл
+
+Новости лежат в `site/src/data/changelog/`, по файлу на запись: `<slug>.md`. `slug`
+берётся из имени файла, порядок в ленте задаёт `date`. Внутри — front-matter
+(плоский YAML: `ключ: значение`) и обычный markdown после него.
+
+```md
+---
+title: Мы создали телеграм канал с обновлениями
+date: 2026-11-16
+tag: Обновление
+summary: Обновления теперь приходят в Telegram…
+logo: changelog/telegram.svg
+logo-alt: Логотип Telegram
+logo-width: 1000
+logo-height: 1000
+channel-label: hoshi beta updates
+channel-handle: t.me/+sFVfKMdNwFIxNjEy
+channel-url: https://t.me/+sFVfKMdNwFIxNjEy
+cta-label: Открыть канал
+cta-url: https://t.me/+sFVfKMdNwFIxNjEy
+note: hoshi beta updates · только обновления приложения
+actual: true
+---
+
+Текст записи: абзацы, списки и прочий markdown.
+```
+
+| Поле | Обязательно | Что значит |
+|---|---|---|
+| `title` | да | заголовок списка и записи, он же `<title>` |
+| `date` | да | `YYYY-MM-DD`; список сортируется по убыванию |
+| `tag` | да | бейдж: «Обновление», «Акция», «Новость» |
+| `summary` | да | лид: description, тизер в списке, поле фида |
+| `logo` | нет | круглый знак над заголовком; нужны `logo-alt`, `logo-width`, `logo-height` |
+| `cover` | нет | широкая обложка; нужны `cover-alt`, `cover-width`, `cover-height`; она же `og:image` |
+| `channel-*` | нет | карточка канала: `label`, `handle` и `url` — все три сразу |
+| `cta-*` | нет | кнопка действия: `label` и `url` (только `https:`) |
+| `note` | нет | мелкая подпись под кнопкой |
+| `actual` | нет | `true` (по умолчанию) — запись попадает в блок `actual` фида |
+
+Неизвестное поле, дубликат, кривая дата или не-`https` ссылка роняют сборку:
+опечатка не должна тихо превращаться в пустую карточку в приложении.
 
 ### Как добавить запись
 
-1. Объект в массив `ENTRIES` — поля ниже. `promo: true` делает запись рекламным экраном
-   в приложении; показывать его или нет, приложение решает по `until`.
-2. Картинки, если нужны, лежат в `site/public/changelog/` и подключаются путём от корня
-   сайта. `logo` — круглый знак над заголовком (как у записи про Telegram), `cover` —
-   широкая обложка, лучше 1200×630: она же подставляется в `og:image` записи.
-3. `channel` — карточка канала под лидом: подпись, адрес для чтения и ссылка. В фид
-   уезжает вместе с остальным — приложению не нужно открывать страницу ради содержания.
-4. `git push` в `main`. CI собирает, гоняет `verify` и публикует; приложение увидит
-   запись на следующем запросе фида (TTL ~1 час, кэш Pages ~10 минут).
-
-```js
-{
-  slug: 'telegram',          // ^[a-z0-9-]+$, он же адрес записи
-  date: '2026-11-16',        // YYYY-MM-DD, список сортируется по убыванию
-  tag: 'Новость',            // бейдж на странице и в фиде
-  title: 'У hoshi появился Telegram-канал',
-  summary: '…',              // description, тизер в списке, поле фида
-  body: ['абзац', ['пункт', 'пункт']],
-  logo: { src: 'changelog/telegram.svg', width: 1000, height: 1000, alt: '…' },  // или null
-  cover: { src: 'og.jpg', width: 1200, height: 630, alt: '…' },  // или null
-  channel: { label: 'hoshi beta updates', handle: 't.me/+…', url: TELEGRAM_UPDATES },  // или null
-  cta: { label: 'Открыть канал', url: TELEGRAM_UPDATES },         // или null
-  note: 'мелкая подпись под кнопкой',                             // или null
-  promo: false,              // самая свежая такая запись = рекламный экран
-  until: null,               // срок показа; сверяет приложение
-}
-```
+1. Файл `site/src/data/changelog/<slug>.md` — slug латиницей, цифрами и дефисом.
+2. Картинки — в `site/public/`, путь в front-matter от корня сайта.
+3. `git push` в `main`. CI собирает, гоняет `verify` и публикует: страница,
+   `export.md` и `feed.json` появляются сами.
 
 ### Фид для приложения
 
-`GET https://hoshi.tv/faq/changelog/feed.json` — единственное, что приложение знает о ленте.
+`GET https://hoshi.tv/faq/changelog/feed.json` — маршрутизатор, а не копия
+страницы: в записях только то, что нужно списку новостей и чтобы найти саму
+новость. Полный текст — в `export.md`.
 
 ```json
 {
   "version": "9f3c2a1b7d10",
   "site": "https://hoshi.tv",
   "listUrl": "https://hoshi.tv/faq/changelog/",
-  "promo": null,
   "entries": [
     {
-      "slug": "telegram",
+      "slug": "splash-update",
       "date": "2026-11-16",
-      "tag": "Новость",
-      "title": "У hoshi появился Telegram-канал",
+      "tag": "Обновление",
+      "title": "Мы создали телеграм канал с обновлениями",
       "summary": "…",
-      "url": "https://hoshi.tv/faq/changelog/telegram",
-      "logo": { "url": "https://hoshi.tv/changelog/telegram.svg", "width": 1000, "height": 1000, "alt": "…" },
-      "cover": null,
-      "channel": { "label": "hoshi beta updates", "handle": "t.me/+…", "url": "https://t.me/+…" },
-      "body": ["абзац", ["пункт", "пункт"], "абзац"],
-      "note": "…",
-      "cta": { "label": "Открыть канал", "url": "https://t.me/+…" },
-      "promo": false,
-      "until": null
+      "url": "https://hoshi.tv/faq/changelog/splash-update",
+      "md": "https://hoshi.tv/faq/changelog/splash-update/export.md"
     }
+  ],
+  "actual": [
+    { "slug": "splash-update", "date": "2026-11-16", "tag": "…", "title": "…", "summary": "…",
+      "url": "https://hoshi.tv/faq/changelog/splash-update",
+      "md": "https://hoshi.tv/faq/changelog/splash-update/export.md" }
   ]
 }
 ```
 
-`entries` — до 20 последних записей в том же виде, новые сверху. Запись в фиде полная:
-`logo`, `body` и `channel` — те же данные, что на странице `/faq/changelog/<slug>`.
-
 | Поле | Что значит |
 |---|---|
-| `version` | sha1 содержимого: меняется только при правке ленты, годится для кэша и «показать один раз» |
-| `promo` | самая свежая запись с `promo: true` или `null` |
-| `entries` | до 20 последних записей, новые сверху |
+| `version` | sha1 содержимого: меняется только при правке ленты, годится для кэша |
+| `entries` | все записи, новые сверху — основной список |
+| `actual` | актуальные записи, от старых к новым; последняя — свежий сплэш |
 | `url` | страница записи для встроенного браузера |
-| `logo` | круглый знак: `url`, `width`, `height`, `alt` или `null` |
-| `cover` | широкая обложка в том же виде или `null` |
-| `channel` | карточка канала: `label`, `handle`, `url` или `null` |
-| `body` | текст записи: абзац — строка, пункты — массив строк |
-| `note` | мелкая подпись под кнопкой или `null` |
-| `until` | до какой даты показывать; срок проверяет приложение |
+| `md` | тот самый `.md`: приложение рисует новость по нему |
 
 Правила приложения:
 
 1. Забирать фид при старте и при выходе на передний план, TTL ~1 час; при ошибке —
    последняя удачная копия из кэша.
-2. Рекламный экран: `promo != null`, `until` не задан или ещё не прошёл, `promo.slug`
-   не показывался раньше. После закрытия сохранить `slug` как «просмотрено».
-3. Список новостей — `entries`; карточка рисуется из `logo`, `title`, `summary`, `body`,
-   `channel` и `cta`. «Подробнее» открывает `url` во встроенном браузере
+2. Сплэш — записи из `actual` (от старых к новым, по одной за запуск); последняя в блоке —
+   самая свежая. Заголовок, знак, канал, кнопки и лид берутся из её `md`
+   (front-matter + markdown); `version` годится для «показать один раз».
+3. Список новостей — `entries`; «Подробнее» открывает `url` во встроенном браузере
    (SFSafariViewController / Custom Tabs), поэтому вёрстка остаётся на сайте.
 4. В фиде нет HTML: только данные и `https`-ссылки.
 
+`export.md` — побайтная копия исходника (front-matter и markdown-тело), лежит рядом
+со страницей. Страницы по-прежнему `<slug>.html`, глубина та же, что у документов:
+корень сайта от записи — `../../`, лента — `../../faq/changelog/`.
+
 Абсолютные URL в фиде собираются из `SITE_URL` (по умолчанию `https://hoshi.tv`), поэтому
 форк для другого домена собирается как `SITE_URL=https://… npm run build`.
-
-Адреса страниц: список — каталог `/faq/changelog/`, запись — файл
-`faq/changelog/<slug>.html` и адрес без слэша. Поэтому корень сайта от записи — `../../`,
-а сама лента — `../../faq/changelog/` (не `../`: из `/faq/changelog/testflight` это `/faq/`).
 
 ## Страница 404
 
@@ -282,7 +288,9 @@ site/                        точка входа Vite
     App.jsx                  состав страницы
     data/landing.js          весь текст, списки и цифры
     data/legal.js            тексты юридических документов и их список
-    data/changelog.js        записи ленты обновлений (они же фид для приложения)
+    data/changelog/          новости: один .md — одна запись
+    data/changelog.js        данные ленты для страницы (virtual:changelog)
+    data/changelog-config.js общие правила: адрес, заголовок списка, формат даты
     data/notFound.js         тексты страницы 404
     sections/                Header, Hero, Ribbon, Catalog, Faq, Legal, Changelog, NotFound, Footer
     components/              Icons (спрайт), Phone, Picture, StoreBadges, ClientOnly, DocBar
@@ -292,6 +300,7 @@ site/                        точка входа Vite
 .github/workflows/pages.yml  сборка и публикация dist/ в ветку pages
 tools/
   build.mjs                  site/ -> dist/ + предрендер + CNAME/.nojekyll
+  changelog.mjs              читает site/src/data/changelog/*.md (front-matter + markdown)
   deploy.mjs                 build -> verify -> push dist/ в pages
   serve.mjs, verify.mjs, shoot.mjs, og.mjs   раздача, проверки, кадры, og.jpg
   fetch-reactbits.mjs, prepare-screens.py, fetch-posters.py, make-brand.py
@@ -304,8 +313,10 @@ vite.config.js               root: site, base: './', dist снаружи
 2. `vite build --ssr src/entry-server.jsx` — та же страница собирается для Node.
 3. `renderToString(<App path=…/>)` вставляется внутрь `<div id="root">` в готовый `index.html`;
    так же рендерится каждый документ и каждая запись ленты, но в свой `<slug>.html` и со
-   своим `<head>`; из тех же записей пишется `dist/faq/changelog/feed.json`, а `dist/404.html`
-   собирается без пути — её адрес определяет хостинг.
+   своим `<head>`; рядом с записью кладётся побайтная копия её `.md` —
+   `dist/faq/changelog/<slug>/export.md`; из тех же записей пишется
+   `dist/faq/changelog/feed.json`, а `dist/404.html` собирается без пути — её адрес
+   определяет хостинг.
 
 Поэтому в `dist/index.html` лежит настоящий текст: он есть до запуска скриптов, его видят
 краулеры, и он же достаётся `llms.txt`-читателям. `verify` отдельно проверяет, что

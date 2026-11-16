@@ -20,7 +20,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'vite';
 import { LEGAL_PAGES, DOCS_DIR } from '../site/src/data/legal.js';
-import { CHANGELOG, CHANGELOG_DIR, FEED_LIMIT, LIST_PAGE } from '../site/src/data/changelog.js';
+import { loadChangelog, CHANGELOG_DIR, LIST_PAGE, MD_DIR } from './changelog.mjs';
 import { NOT_FOUND } from '../site/src/data/notFound.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,6 +30,10 @@ const SSR_DIR = path.join(ROOT, '.ssr');
 /* Канонический адрес сайта — только для абсолютных ссылок в фиде: приложение
    получает готовые URL картинок и записей, а не склеивает их само. */
 const SITE = (process.env.SITE_URL ?? 'https://hoshi.tv').replace(/\/+$/, '');
+
+/* Новости — .md-файлы: читаем их до сборки, чтобы битый front-matter упал
+   раньше, чем Vite потратит время на бандл. */
+const { entries: CHANGELOG } = await loadChangelog();
 
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const gzip = (body) => zlib.gzipSync(body, { level: 9 }).length;
@@ -149,57 +153,50 @@ if (process.env.PRERENDER === '0') {
         .replace(/(<meta\s+property="og:image:height"[^>]*content=")[^"]*/, `$1${cover.height}`);
     }
     await fs.writeFile(path.join(logDir, logPage.file), fill(page, render(logPage.url)), 'utf8');
+
+    /* Копия исходника рядом со страницей: /faq/changelog/<slug>/export.md.
+       Это тот же файл, что лежит в site/src/data/changelog: приложение рисует
+       новость по нему, а не по HTML-странице. */
+    if (logPage.entry) {
+      const exportDir = path.join(logDir, logPage.entry.slug);
+      await fs.mkdir(exportDir, { recursive: true });
+      await fs.copyFile(
+        path.join(MD_DIR, logPage.entry.source),
+        path.join(exportDir, 'export.md'),
+      );
+    }
   }
 
-  /* Фид для приложения собирается из тех же записей, что и страницы, и несёт
-     всю запись целиком: знак, текст, карточку канала и подпись. Приложению не
-     нужно открывать страницу ради содержания, а «Подробнее» остаётся ссылкой
-     на неё. `version` — хэш содержимого: приложение кэширует его и показывает
-     новость один раз, а меняется он только при правке ленты (даты сборки в
-     хэше нет, поэтому повторная сборка даёт тот же файл). */
-  const feedEntry = (entry) => ({
+  /* feed.json — маршрутизатор, а не копия страницы. В записи только то, что
+     нужно списку новостей и чтобы найти саму новость: заголовок, лид, адрес
+     страницы и адрес export.md с полным текстом.
+
+     entries — все новости, новые сверху (основной список).
+     actual  — только актуальные, от старых к новым: приложение берёт последнюю
+               запись как свежий сплэш, а порядок остаётся историей показа.
+
+     `version` — хэш содержимого: приложение кэширует его и показывает новость
+     один раз, а меняется он только при правке ленты (даты сборки в хэше нет,
+     поэтому повторная сборка даёт тот же файл). */
+  const routerItem = (entry) => ({
     slug: entry.slug,
     date: entry.date,
     tag: entry.tag,
     title: entry.title,
     summary: entry.summary,
     url: `${SITE}/${CHANGELOG_DIR}/${entry.slug}`,
-    logo: entry.logo
-      ? {
-          url: `${SITE}/${entry.logo.src}`,
-          width: entry.logo.width,
-          height: entry.logo.height,
-          alt: entry.logo.alt,
-        }
-      : null,
-    cover: entry.cover
-      ? {
-          url: `${SITE}/${entry.cover.src}`,
-          width: entry.cover.width,
-          height: entry.cover.height,
-          alt: entry.cover.alt,
-        }
-      : null,
-    channel: entry.channel
-      ? {
-          label: entry.channel.label,
-          handle: entry.channel.handle,
-          url: entry.channel.url,
-        }
-      : null,
-    body: entry.body ?? [],
-    note: entry.note ?? null,
-    cta: entry.cta ?? null,
-    promo: entry.promo === true,
-    until: entry.until ?? null,
+    md: `${SITE}/${CHANGELOG_DIR}/${entry.slug}/export.md`,
   });
 
-  const promoEntry = CHANGELOG.find((entry) => entry.promo === true);
+  const actual = CHANGELOG.filter((entry) => entry.actual)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.slug.localeCompare(b.slug))
+    .map(routerItem);
+
   const logBody = {
     site: SITE,
     listUrl: `${SITE}/${CHANGELOG_DIR}/`,
-    promo: promoEntry ? feedEntry(promoEntry) : null,
-    entries: CHANGELOG.slice(0, FEED_LIMIT).map(feedEntry),
+    entries: CHANGELOG.map(routerItem),
+    actual,
   };
   const feed = {
     version: createHash('sha1').update(JSON.stringify(logBody)).digest('hex').slice(0, 12),

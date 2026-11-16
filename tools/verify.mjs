@@ -13,7 +13,13 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { LEGAL_PAGES, DOCS_DIR } from '../site/src/data/legal.js';
-import { CHANGELOG, CHANGELOG_DIR, FEED_LIMIT, LIST_PAGE, changelogForPath } from '../site/src/data/changelog.js';
+import {
+  loadChangelog,
+  CHANGELOG_DIR,
+  LIST_PAGE,
+  MD_DIR,
+  changelogForPath,
+} from './changelog.mjs';
 import { NOT_FOUND } from '../site/src/data/notFound.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -33,6 +39,17 @@ const check = (ok, message) => (ok ? note.push(`  ok   ${message}`) : fail.push(
 
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 const gzip = (body) => zlib.gzipSync(body, { level: 9 }).length;
+
+/* Новости читаются тем же парсером, что и сборка: проверяем исходники, а не
+   их копию в бандле. Битый .md роняет verify с понятным сообщением. */
+let changelog;
+try {
+  changelog = await loadChangelog();
+} catch (error) {
+  console.error(`verify: ${error.message}`);
+  process.exit(1);
+}
+const CHANGELOG = changelog.entries;
 
 /* ------------------------------------------------------------------ файлы */
 
@@ -261,12 +278,8 @@ check(
   'у каждой записи есть заголовок, лид и тег',
 );
 check(
-  CHANGELOG.every((entry) => Array.isArray(entry.body) && entry.body.length > 0),
+  CHANGELOG.every((entry) => typeof entry.html === 'string' && entry.html.trim().length > 0),
   'у каждой записи есть текст',
-);
-check(
-  CHANGELOG.every((entry) => !entry.until || entry.until >= entry.date),
-  'until не раньше даты записи',
 );
 check(
   CHANGELOG.every((entry) => !entry.cta || /^https:\/\//.test(entry.cta.url)),
@@ -297,14 +310,14 @@ check(
   'у карточек каналов есть подпись, адрес и https-ссылка',
 );
 check(
-  changelogForPath('/faq/changelog/')?.list === true &&
-    changelogForPath('/faq/changelog')?.list === true &&
-    changelogForPath('/app-landing/faq/changelog/')?.list === true &&
-    changelogForPath(`/faq/changelog/${logSlugs[0]}`)?.slug === logSlugs[0] &&
-    changelogForPath(`/faq/changelog/${logSlugs[0]}/`)?.slug === logSlugs[0] &&
-    changelogForPath('/faq/changelog/nope') === null &&
-    changelogForPath('/faq/docs/terms') === null &&
-    changelogForPath('/') === null,
+  changelogForPath('/faq/changelog/', CHANGELOG)?.list === true &&
+    changelogForPath('/faq/changelog', CHANGELOG)?.list === true &&
+    changelogForPath('/app-landing/faq/changelog/', CHANGELOG)?.list === true &&
+    changelogForPath(`/faq/changelog/${logSlugs[0]}`, CHANGELOG)?.slug === logSlugs[0] &&
+    changelogForPath(`/faq/changelog/${logSlugs[0]}/`, CHANGELOG)?.slug === logSlugs[0] &&
+    changelogForPath('/faq/changelog/nope', CHANGELOG) === null &&
+    changelogForPath('/faq/docs/terms', CHANGELOG) === null &&
+    changelogForPath('/', CHANGELOG) === null,
   'адреса ленты разбираются как список, запись или не наше',
 );
 
@@ -323,8 +336,13 @@ check(
 );
 check(files.has(`${CHANGELOG_DIR}/feed.json`), 'есть фид /faq/changelog/feed.json');
 check(
-  CHANGELOG.every((entry) => !entry.logo || files.has(entry.logo.src)),
-  'круглые знаки записей собраны в dist',
+  CHANGELOG.every((entry) => files.has(`${CHANGELOG_DIR}/${entry.slug}/export.md`)),
+  'у каждой записи есть <slug>/export.md',
+);
+check(
+  CHANGELOG.every((entry) => !entry.logo || files.has(entry.logo.src)) &&
+    CHANGELOG.every((entry) => !entry.cover || files.has(entry.cover.src)),
+  'картинки записей собраны в dist',
 );
 
 const listHtml = await readDist(`${CHANGELOG_DIR}/index.html`);
@@ -354,6 +372,7 @@ const entryOk = (entry, page) =>
   page.includes('href="../../faq/changelog/"') &&
   !page.includes('href="../"') &&
   page.includes('="../../assets/') &&
+  page.includes(entry.html.trim()) &&
   (!entry.cover || page.includes(`src="../../${entry.cover.src}"`)) &&
   (!entry.logo || page.includes(`src="../../${entry.logo.src}"`)) &&
   (!entry.channel || page.includes(`href="${entry.channel.url}"`));
@@ -366,6 +385,50 @@ check(
   'лид записи есть в её HTML',
 );
 
+const exportCopies = await Promise.all(
+  CHANGELOG.map(async (entry) => {
+    try {
+      const [source, exported] = await Promise.all([
+        fs.readFile(path.join(MD_DIR, entry.source), 'utf8'),
+        fs.readFile(path.join(DIST, CHANGELOG_DIR, entry.slug, 'export.md'), 'utf8'),
+      ]);
+      return source === exported;
+    } catch {
+      return false;
+    }
+  }),
+);
+check(exportCopies.every(Boolean), 'export.md — побайтная копия исходного .md');
+
+/* Размеры в front-matter обязаны совпадать с файлами: по ним страница держит
+   место под картинку, а приложение рисует hero без прыжка. */
+const svgSize = (text) => {
+  const width = text.match(/<svg[^>]*\swidth="([\d.]+)px"/i);
+  const height = text.match(/<svg[^>]*\sheight="([\d.]+)px"/i);
+  if (width && height) return { width: Number(width[1]), height: Number(height[1]) };
+  const box = text.match(/<svg[^>]*\sviewBox="0 0 ([\d.]+) ([\d.]+)"/i);
+  return box ? { width: Number(box[1]), height: Number(box[2]) } : null;
+};
+
+for (const entry of CHANGELOG) {
+  for (const [kind, picture] of [
+    ['знак', entry.logo],
+    ['обложка', entry.cover],
+  ]) {
+    if (!picture) continue;
+    const file = path.join(DIST, picture.src);
+    const actual = picture.src.endsWith('.webp')
+      ? webpSize(await fs.readFile(file))
+      : picture.src.endsWith('.svg')
+        ? svgSize(await fs.readFile(file, 'utf8'))
+        : null;
+    check(
+      Boolean(actual) && actual.width === picture.width && actual.height === picture.height,
+      `${kind} ${picture.src} совпадает по размерам`,
+    );
+  }
+}
+
 let feed = null;
 try {
   feed = JSON.parse(await readDist(`${CHANGELOG_DIR}/feed.json`));
@@ -373,74 +436,51 @@ try {
   feed = null;
 }
 check(Boolean(feed), 'фид ленты парсится как JSON');
+
+/** В фиде только маршрут: всё остальное приложение берёт из <slug>/export.md. */
+const ROUTER_KEYS = ['date', 'md', 'slug', 'summary', 'tag', 'title', 'url'].join(',');
+
 if (feed) {
   check(/^[0-9a-f]{12}$/.test(String(feed.version)), 'version фида — 12 hex-символов');
   check(/^https:\/\//.test(String(feed.site)), 'site фида — абсолютный https');
   check(feed.listUrl === `${feed.site}/${CHANGELOG_DIR}/`, 'listUrl указывает на /faq/changelog/');
   check(
-    Array.isArray(feed.entries) && feed.entries.length === Math.min(FEED_LIMIT, CHANGELOG.length),
-    `в фиде ${feed.entries?.length ?? 0} записей (ожидалось ${Math.min(FEED_LIMIT, CHANGELOG.length)})`,
+    Array.isArray(feed.entries) && feed.entries.length === CHANGELOG.length,
+    `в фиде ${feed.entries?.length ?? 0} записей (ожидалось ${CHANGELOG.length})`,
+  );
+  check(
+    (feed.entries ?? []).every((entry) => Object.keys(entry).sort().join(',') === ROUTER_KEYS),
+    'в фиде только поля-маршруты: slug, date, tag, title, summary, url, md',
   );
   check(
     (feed.entries ?? []).every(
-      (entry) => entry.url === `${feed.site}/${CHANGELOG_DIR}/${entry.slug}`,
+      (entry) =>
+        entry.url === `${feed.site}/${CHANGELOG_DIR}/${entry.slug}` &&
+        entry.md === `${feed.site}/${CHANGELOG_DIR}/${entry.slug}/export.md` &&
+        files.has(`${CHANGELOG_DIR}/${entry.slug}/export.md`),
     ),
-    'url записей в фиде абсолютные и совпадают со slug',
+    'url и md записей абсолютные и указывают на собранные файлы',
   );
   check(
     (feed.entries ?? []).every((entry) => entry.title && entry.summary && entry.tag && entry.date),
     'у записей в фиде есть дата, тег, заголовок и лид',
   );
+  const expectedActual = CHANGELOG.filter((entry) => entry.actual)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.slug.localeCompare(b.slug))
+    .map((entry) => entry.slug);
   check(
-    (feed.promo?.slug ?? null) === (CHANGELOG.find((entry) => entry.promo === true)?.slug ?? null),
-    'promo в фиде — самая свежая запись с promo',
+    Array.isArray(feed.actual) &&
+      feed.actual.map((entry) => entry.slug).join(',') === expectedActual.join(','),
+    'actual — актуальные записи, от старых к новым',
   );
   check(
-    (feed.entries ?? []).every(
-      (entry) =>
-        !entry.cover ||
-        (files.has(entry.cover.url.slice(`${feed.site}/`.length)) &&
-          Boolean(entry.cover.alt) &&
-          entry.cover.width > 0 &&
-          entry.cover.height > 0),
-    ),
-    'обложки в фиде указывают на существующие файлы',
+    (feed.actual ?? []).every((entry) => Object.keys(entry).sort().join(',') === ROUTER_KEYS),
+    'в actual только поля-маршруты',
   );
   check(
-    (feed.entries ?? []).every(
-      (entry) =>
-        Array.isArray(entry.body) &&
-        entry.body.length > 0 &&
-        (!entry.logo ||
-          (files.has(entry.logo.url.slice(`${feed.site}/`.length)) &&
-            Boolean(entry.logo.alt) &&
-            entry.logo.width > 0 &&
-            entry.logo.height > 0)) &&
-        (!entry.channel ||
-          (/^https:\/\//.test(entry.channel.url) &&
-            Boolean(entry.channel.label) &&
-            Boolean(entry.channel.handle))),
-    ),
-    'в фиде есть текст, знак и карточка канала',
+    !('promo' in feed) && !('until' in feed) && !('body' in feed),
+    'в фиде нет promo/until/body',
   );
-  check(
-    (feed.entries ?? []).every(
-      (entry) =>
-        JSON.stringify(entry.body) ===
-        JSON.stringify(CHANGELOG.find((item) => item.slug === entry.slug)?.body),
-    ),
-    'текст в фиде совпадает со страницей записи',
-  );
-  for (const entry of feed.entries ?? []) {
-    const cover = entry.cover;
-    if (!cover || !cover.url.endsWith('.webp')) continue;
-    const rel = cover.url.slice(`${feed.site}/`.length);
-    const actual = webpSize(await fs.readFile(path.join(DIST, rel)));
-    check(
-      Boolean(actual) && actual.width === cover.width && actual.height === cover.height,
-      `обложка ${rel} совпадает по размерам`,
-    );
-  }
   check(!/<[a-z][^>]*>/i.test(JSON.stringify(feed)), 'в фиде нет HTML');
 }
 check(html.includes('href="./faq/changelog/"'), 'футер лендинга ссылается на ленту');

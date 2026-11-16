@@ -67,23 +67,9 @@ function Channel({ channel }) {
   );
 }
 
-/** Текст записи в том же формате, что у документов: абзац или массив пунктов. */
-function Body({ blocks }) {
-  return (
-    <section className="doc__section">
-      {blocks.map((block, index) =>
-        Array.isArray(block) ? (
-          <ul key={index}>
-            {block.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        ) : (
-          <p key={index}>{block}</p>
-        ),
-      )}
-    </section>
-  );
+/** Текст записи: markdown уже собран в HTML на сборке, стили — общие .doc__section. */
+function Body({ html }) {
+  return <section className="doc__section" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 /** Кнопка действия: единственная заливка акцентом на странице. */
@@ -165,7 +151,7 @@ export default function Changelog({ page }) {
 
             <Cover cover={page.cover} />
             <Channel channel={page.channel} />
-            <Body blocks={page.body} />
+            <Body html={page.html} />
             <Cta cta={page.cta} />
             {page.note ? <p className="log__note">{page.note}</p> : null}
           </article>
