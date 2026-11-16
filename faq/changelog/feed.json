@@ -1,0 +1,27 @@
+{
+  "version": "36f6a4b786e1",
+  "site": "https://hoshi.tv",
+  "listUrl": "https://hoshi.tv/faq/changelog/",
+  "entries": [
+    {
+      "slug": "splash-update",
+      "date": "2026-11-16",
+      "tag": "Обновление",
+      "title": "Теперь в hoshi есть сплэши",
+      "summary": "При запуске hoshi показывает экран с тем, что важно: обновления, новые функции и всё, что стоит знать о приложении.",
+      "url": "https://hoshi.tv/faq/changelog/splash-update",
+      "content": "https://hoshi.tv/faq/changelog/splash-update/export.json"
+    }
+  ],
+  "actual": [
+    {
+      "slug": "splash-update",
+      "date": "2026-11-16",
+      "tag": "Обновление",
+      "title": "Теперь в hoshi есть сплэши",
+      "summary": "При запуске hoshi показывает экран с тем, что важно: обновления, новые функции и всё, что стоит знать о приложении.",
+      "url": "https://hoshi.tv/faq/changelog/splash-update",
+      "content": "https://hoshi.tv/faq/changelog/splash-update/export.json"
+    }
+  ]
+}
